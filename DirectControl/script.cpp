@@ -10,6 +10,7 @@ Ped playerPed;
 Vehicle vehicleToControl;
 VehicleExtensions ext;
 XInputController controller(2);
+bool playerInput = true;
 
 bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
     return vehicle != 0 &&
@@ -148,6 +149,65 @@ void GetControls(float limitRadians, bool &handbrake, float &throttle, float &br
     }
 }
 
+float GET_DISTANCE_BETWEEN_COORDS(Vector3 a, Vector3 b) {
+    return GAMEPLAY::GET_DISTANCE_BETWEEN_COORDS(a.x, a.y, a.z, b.x, b.y, b.z, false);
+}
+
+void GetControls(Vehicle ai, Ped pedToStalk, float limitRadians, bool &handbrake, float &throttle, float &brake, float &steer) {
+    Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0, 5.0f, 0.0f);
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(ai, 1);
+
+    Vector3 preyPosition = ENTITY::GET_ENTITY_COORDS(pedToStalk, 1);
+
+    Vector3 preyVector = Normalize(preyPosition - aiPosition);
+    Vector3 forwardVector = Normalize(aiForward - aiPosition);
+    //GRAPHICS::DRAW_LINE(aiPosition.x, aiPosition.y, aiPosition.z, preyPosition.x, preyPosition.y, preyPosition.z, 255, 0, 0, 255);
+    //GRAPHICS::DRAW_LINE(aiForward.x, aiForward.y, aiForward.z, preyPosition.x, preyPosition.y, preyPosition.z, 0, 255, 0, 255);
+
+    float aiHeading = atan2(forwardVector.y, forwardVector.x);
+    float preyHeading = atan2(preyVector.y, preyVector.x);
+
+    float turn = atan2(sin(preyHeading - aiHeading), cos(preyHeading - aiHeading));
+    float distance = GET_DISTANCE_BETWEEN_COORDS(aiPosition, preyPosition);
+
+    steer = constrain(turn * 1.33f, -limitRadians, limitRadians);
+
+    const float followDistance = 20.0f;
+
+    if (distance > followDistance) {
+        throttle = map(distance, followDistance, 35.0f, 0.0f, 1.0f);
+        throttle = constrain(throttle, 0.0f, 1.0f);
+
+        if (turn > 2.0944 || turn < -2.0944) 
+            throttle = -throttle;
+        
+        handbrake = abs(turn) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f;
+
+        float distPerp = (abs(turn) - 1.5708f) / 1.5708f;
+        throttle *= map(abs(distPerp), 0.0f, 1.0f, 0.5f, 1.0f);
+
+        if (!handbrake && abs(turn) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f) {
+            brake = (abs(turn) - limitRadians) / 3.14f * throttle;
+            throttle *= 0.33f;
+        }
+        else {
+            brake = 0.0f;
+        }
+    }
+    else {
+        throttle = 0.0f;
+        brake = map(distance, followDistance / 2.0f, followDistance, 1.0f, 0.0f);
+        brake = constrain(brake, 0.0f, 1.0f);
+    }
+
+    showText(0.4, 0.05, 0.5, "T: " + std::to_string(throttle));
+    showText(0.4, 0.10, 0.5, "B: " + std::to_string(brake));
+    showText(0.4, 0.15, 0.5, "S: " + std::to_string(steer));
+    showText(0.4, 0.20, 0.5, "H: " + std::to_string(handbrake));
+    showText(0.4, 0.25, 0.5, "Rad: " + std::to_string(turn));
+    showText(0.5, 0.25, 0.5, "Deg: " + std::to_string(rad2deg(turn)));
+}
+
 void UpdateControl() {
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(vehicleToControl))
         VEHICLE::SET_VEHICLE_ENGINE_ON(vehicleToControl, true, true, true);
@@ -161,7 +221,10 @@ void UpdateControl() {
     float brake;
     float steer;
 
-    GetControls(limitRadians, handbrake, throttle, brake, steer);
+    if (playerInput)
+        GetControls(limitRadians, handbrake, throttle, brake, steer);
+    else
+        GetControls(vehicleToControl, playerPed, limitRadians, handbrake, throttle, brake, steer);
 
     float desiredHeading = CalculateDesiredHeading(vehicleToControl, actualAngle, limitRadians, steer, reduction);
 
@@ -206,6 +269,8 @@ void update()
             PED::SET_PED_INTO_VEHICLE(playerPed, vehicleToControl, -2);
         }
     }
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("pi")))
+        playerInput = !playerInput;
 
     if (vehicle == vehicleToControl && playerPed == VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1)) {
         return;
@@ -224,6 +289,7 @@ void main() {
     logger.Write(INFO, "Use the \"cc\" cheat while in a car to take control");
     logger.Write(INFO, "IJKL as WASD, U is reverse, O is handbrake");
     logger.Write(INFO, "Use the \"cc\" cheat again to remove control");
+    logger.Write(INFO, "Use the \"pi\" cheat to switch between player input and simple chase AI");
 
     ext.initOffsets();
 
