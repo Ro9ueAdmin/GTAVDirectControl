@@ -5,8 +5,6 @@
 #include "Util/MathExt.h"
 #include "XInputControl.h"
 
-#pragma comment(lib, "XInput.lib")
-
 Player player;
 Ped playerPed;
 Vehicle vehicleToControl;
