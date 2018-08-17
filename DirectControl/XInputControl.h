@@ -99,7 +99,7 @@ public:
     XInputController(int playerNumber);
     ~XInputController() = default;
 
-    bool IsAvailable();
+    bool IsAvailable() const;
     bool IsButtonPressed(XboxButtons xboxButton);
     bool IsButtonJustPressed(XboxButtons xboxButton);
     bool IsButtonJustReleased(XboxButtons xboxButton);
@@ -115,19 +115,18 @@ public:
     void Vibrate(int leftval = 0, int rightval = 0);
 
 private:
+    XINPUT_STATE getState();
+    float filterDeadzone(XboxButtons buttonType, int input);
+
     std::array<__int64, SIZEOF_XboxButtons> pressTime;
     std::array<__int64, SIZEOF_XboxButtons> releaseTime;
     std::array<__int64, SIZEOF_XboxButtons> tapPressTime;
     std::array<__int64, SIZEOF_XboxButtons> tapReleaseTime;
     std::array<bool, SIZEOF_XboxButtons> xboxButtonCurr;
     std::array<bool, SIZEOF_XboxButtons> xboxButtonPrev;
-    float triggerValue = 0.75f;
-
+    float triggerValue;
     XINPUT_STATE controllerState;
     WORD buttonState;
     int controllerNum;
-
-    XINPUT_STATE getState();
-    bool isConnected();
-    float filterDeadzone(XboxButtons buttonType, int input);
+    bool mConnected;
 };
