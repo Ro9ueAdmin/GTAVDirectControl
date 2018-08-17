@@ -118,6 +118,22 @@ void GetControls(float limitRadians, bool &handbrake, float &throttle, float &br
         bool reverseSwitch = controller.IsButtonPressed(XInputController::LeftShoulder);
         if (reverseSwitch)
             throttle = -controller.GetAnalogValue(XInputController::RightTrigger);
+
+        float buzz = 0.0f;
+        auto effects = ext.GetWheelSkidSmokeEffect(vehicleToControl);
+        for (auto effect : effects) {
+            buzz += effect;
+        }
+        buzz = abs(buzz);
+        buzz /= (float)effects.size();
+        buzz *= 2000.0f;
+        if (buzz > 65535.0f)
+            buzz = 65535.0f;
+
+        if (buzz > 10.0f) {
+            controller.Vibrate((int)buzz, (int)buzz);
+        }
+        showText(0.5, 0.1, 1.0, std::to_string(buzz));
     }
     else {
         handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
