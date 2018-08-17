@@ -3,11 +3,15 @@
 #include "Util/Logger.hpp"
 #include "Util/UIUtils.h"
 #include "Util/MathExt.h"
+#include "XInputControl.h"
+
+#pragma comment(lib, "XInput.lib")
 
 Player player;
 Ped playerPed;
 Vehicle vehicleToControl;
 VehicleExtensions ext;
+XInputController controller(2);
 
 void readSettings() {
 	
@@ -81,7 +85,7 @@ float CalculateDesiredHeading(Vehicle vehicle, float steeringAngle, float steeri
 
         Vector3 travelNorm = Normalize(travelWorld - positionWorld);
         Vector3 steerNorm = Normalize(steeringWorld - positionWorld);
-        float travelDir = atan2(travelNorm.y, travelNorm.x) + desiredHeading;
+        float travelDir = atan2(travelNorm.y, travelNorm.x) + desiredHeading * reduction;
         float steerDir = atan2(steerNorm.y, steerNorm.x);
 
         correction = 2.0f * atan2(sin(travelDir - steerDir), cos(travelDir - steerDir));
@@ -107,6 +111,33 @@ float getSteeringAngle(Vehicle v) {
     return largestAngle;
 }
 
+void GetControls(float limitRadians, bool &handbrake, float &throttle, float &brake, float &steer) {
+    controller.Update();
+    if (controller.IsAvailable()) {
+        handbrake = controller.IsButtonPressed(XInputController::RightShoulder);
+        throttle = controller.GetAnalogValue(XInputController::RightTrigger);
+        brake = controller.GetAnalogValue(XInputController::LeftTrigger);
+        steer = controller.GetAnalogValue(XInputController::LeftThumbLeft);
+        if (steer == 0.0f) steer = -controller.GetAnalogValue(XInputController::LeftThumbRight);
+        bool reverseSwitch = controller.IsButtonPressed(XInputController::LeftShoulder);
+        if (reverseSwitch)
+            throttle = -controller.GetAnalogValue(XInputController::RightTrigger);
+    }
+    else {
+        handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
+        throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
+        float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
+        if (reverse > 0.5)
+            throttle = -1.0f;
+
+        brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
+        float left = GetAsyncKeyState('J') & 0x8000 ? limitRadians : 0.0f;
+        float right = GetAsyncKeyState('L') & 0x8000 ? limitRadians : 0.0f;
+        steer = left;
+        if (right > 0.5f) steer = -right;
+    }
+}
+
 void UpdateControl() {
     float desiredHeading = 0;
 
@@ -116,22 +147,21 @@ void UpdateControl() {
     float actualAngle = getSteeringAngle(vehicleToControl);
     float limitRadians = ext.GetMaxSteeringAngle(vehicleToControl);
     float reduction = CalculateReduction(vehicleToControl);
-    bool handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
 
-    float throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
-    float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
-    if (reverse > 0.5)
-        throttle = -1.0f;
+    bool handbrake;
+    float throttle;
+    float brake;
+    float steer;
 
-    float brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
-    float left = GetAsyncKeyState('J') & 0x8000 ? limitRadians : 0.0f;
-    float right = GetAsyncKeyState('L') & 0x8000 ? limitRadians : 0.0f;
-    float steer = left;
-    if (right > 0.5f) steer = -right;
+    GetControls(limitRadians, handbrake, throttle, brake, steer);
 
     desiredHeading = CalculateDesiredHeading(vehicleToControl, actualAngle, limitRadians, steer, reduction);
     ext.SetThrottleP(vehicleToControl, throttle);
     ext.SetBrakeP(vehicleToControl, brake);
+    if (brake > 0.0f)
+        VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(vehicleToControl, true);
+    else
+        VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(vehicleToControl, false);
     
     ext.SetSteeringAngle(vehicleToControl, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
     ext.SetHandbrake(vehicleToControl, handbrake);
@@ -140,8 +170,10 @@ void UpdateControl() {
     showText(0.1, 0.10, 0.5, "B: " + std::to_string(brake));
     showText(0.1, 0.15, 0.5, "S: " + std::to_string(steer));
     showText(0.1, 0.20, 0.5, "H: " + std::to_string(handbrake));
-    showText(0.1, 0.25, 0.5, "FS: " + std::to_string(desiredHeading));
-    showText(0.1, 0.30, 0.5, "AS: " + std::to_string(actualAngle));
+    showText(0.1, 0.25, 0.5, "Wanted: " + std::to_string(desiredHeading));
+    showText(0.1, 0.30, 0.5, "Actual: " + std::to_string(actualAngle));
+    showText(0.1, 0.35, 0.5, "Reduct: " + std::to_string(reduction));
+
 
     drawSteeringLines(vehicleToControl, actualAngle, desiredHeading);
 }

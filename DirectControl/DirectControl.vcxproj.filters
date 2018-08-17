@@ -24,6 +24,10 @@
     <ClCompile Include="Memory\VehicleExtensions.cpp">
       <Filter>MannyTranny</Filter>
     </ClCompile>
+    <ClCompile Include="XInputControl.cpp" />
+    <ClCompile Include="Util\TimeHelper.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h" />
@@ -54,6 +58,10 @@
     </ClInclude>
     <ClInclude Include="Memory\VehicleExtensions.hpp">
       <Filter>MannyTranny</Filter>
+    </ClInclude>
+    <ClInclude Include="XInputControl.h" />
+    <ClInclude Include="Util\TimeHelper.hpp">
+      <Filter>Util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

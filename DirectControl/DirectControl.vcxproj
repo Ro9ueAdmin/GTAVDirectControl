@@ -149,8 +149,10 @@
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Util\Logger.cpp" />
     <ClCompile Include="Util\MathExt.cpp" />
+    <ClCompile Include="Util\TimeHelper.cpp" />
     <ClCompile Include="Util\UIUtils.cpp" />
     <ClCompile Include="Util\Util.cpp" />
+    <ClCompile Include="XInputControl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h" />
@@ -164,8 +166,10 @@
     <ClInclude Include="script.h" />
     <ClInclude Include="Util\Logger.hpp" />
     <ClInclude Include="Util\MathExt.h" />
+    <ClInclude Include="Util\TimeHelper.hpp" />
     <ClInclude Include="Util\UIUtils.h" />
     <ClInclude Include="Util\Util.hpp" />
+    <ClInclude Include="XInputControl.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
