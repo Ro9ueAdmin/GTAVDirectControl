@@ -13,10 +13,6 @@ Vehicle vehicleToControl;
 VehicleExtensions ext;
 XInputController controller(2);
 
-void readSettings() {
-	
-}
-
 bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
     return vehicle != 0 &&
         ENTITY::DOES_ENTITY_EXIST(vehicle) &&
@@ -139,8 +135,6 @@ void GetControls(float limitRadians, bool &handbrake, float &throttle, float &br
 }
 
 void UpdateControl() {
-    float desiredHeading = 0;
-
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(vehicleToControl))
         VEHICLE::SET_VEHICLE_ENGINE_ON(vehicleToControl, true, true, true);
 
@@ -155,7 +149,8 @@ void UpdateControl() {
 
     GetControls(limitRadians, handbrake, throttle, brake, steer);
 
-    desiredHeading = CalculateDesiredHeading(vehicleToControl, actualAngle, limitRadians, steer, reduction);
+    float desiredHeading = CalculateDesiredHeading(vehicleToControl, actualAngle, limitRadians, steer, reduction);
+
     ext.SetThrottleP(vehicleToControl, throttle);
     ext.SetBrakeP(vehicleToControl, brake);
     if (brake > 0.0f)
@@ -174,7 +169,6 @@ void UpdateControl() {
     showText(0.1, 0.30, 0.5, "Actual: " + std::to_string(actualAngle));
     showText(0.1, 0.35, 0.5, "Reduct: " + std::to_string(reduction));
 
-
     drawSteeringLines(vehicleToControl, actualAngle, desiredHeading);
 }
 
@@ -185,19 +179,17 @@ void update()
     Vehicle vehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cc"))) {
-        if (isVehicleAvailable(vehicle, playerPed) || amIInCar(vehicle, playerPed)) {
+        if (ENTITY::DOES_ENTITY_EXIST(vehicleToControl)) {
+            showNotification("Stop controlling vehicle " + std::to_string(vehicleToControl));
+            ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicleToControl, false, true);
+            ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&vehicleToControl);
+            vehicleToControl = 0;
+        }
+        else if (isVehicleAvailable(vehicle, playerPed) || amIInCar(vehicle, playerPed)) {
             vehicleToControl = vehicle;
             ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicleToControl, true, false);
             showNotification("Controlling vehicle " + std::to_string(vehicle));
             PED::SET_PED_INTO_VEHICLE(playerPed, vehicleToControl, -2);
-        }
-        else {
-            if (ENTITY::DOES_ENTITY_EXIST(vehicleToControl)) {
-                showNotification("Stop controlling vehicle " + std::to_string(vehicleToControl));
-                ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicleToControl, false, true);
-                ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&vehicleToControl);
-                vehicleToControl = 0;
-            }
         }
     }
 
@@ -213,9 +205,7 @@ void update()
     }
 }
 
-void main()
-{
-    logger.Clear();
+void main() {
     logger.Write(INFO, "Direct vehicle control test script");
     logger.Write(INFO, "Use the \"cc\" cheat while in a car to take control");
     logger.Write(INFO, "IJKL as WASD, U is reverse, O is handbrake");
@@ -223,16 +213,13 @@ void main()
 
     ext.initOffsets();
 
-	readSettings();
-	while (true)
-	{
+    while (true) {
 		update();
 		WAIT(0);
 	}
 }
 
-void ScriptMain()
-{
+void ScriptMain() {
 	srand(GetTickCount());
 	main();
 }
