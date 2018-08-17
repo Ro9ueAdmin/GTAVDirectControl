@@ -7,22 +7,26 @@ http://dev-c.com
 #include "..\..\ScriptHookV_SDK\inc\main.h"
 #include "script.h"
 #include "Util/Logger.hpp"
+#include <Memory/Versions.h>
 
-BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)
-{
-	switch (reason)
-	{
-	case DLL_PROCESS_ATTACH: {
-        const std::string logFile = "./DirectControl.log";
-        logger.SetFile(logFile);
-        logger.SetMinLevel(DEBUG);
+BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
+    const char* logFile = "./DirectControl.log";
+    logger.SetFile(logFile);
+    logger.SetMinLevel(DEBUG);
+
+    switch (reason) {
+    case DLL_PROCESS_ATTACH: {
+        logger.Clear();
+        logger.Write(INFO, "DirectControl %s (build %s %s)", "v0.0.0", __DATE__, __TIME__);
+        logger.Write(INFO, "Game version " + eGameVersionToString(getGameVersion()));
+        logger.Write(INFO, "");
         scriptRegister(hInstance, ScriptMain);
         break;
-
-	}
-	case DLL_PROCESS_DETACH:
-		scriptUnregister(hInstance);
-		break;
-	}
+    }
+    case DLL_PROCESS_DETACH: {
+        scriptUnregister(hInstance);
+        break;
+    }
+    }
 	return TRUE;
 }
