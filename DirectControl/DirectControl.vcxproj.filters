@@ -63,6 +63,7 @@
     <ClInclude Include="Util\TimeHelper.hpp">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="Blip.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">

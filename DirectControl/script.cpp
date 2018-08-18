@@ -4,6 +4,7 @@
 #include "Util/UIUtils.h"
 #include "Util/MathExt.h"
 #include "XInputControl.h"
+#include "Blip.h"
 
 Player player;
 Ped playerPed;
@@ -11,6 +12,7 @@ Vehicle vehicleToControl;
 VehicleExtensions ext;
 XInputController controller(2);
 bool playerInput = true;
+std::vector<std::unique_ptr<BlipX>> blips;
 
 bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
     return vehicle != 0 &&
@@ -258,6 +260,16 @@ void update()
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cc"))) {
         if (ENTITY::DOES_ENTITY_EXIST(vehicleToControl)) {
             showNotification("Stop controlling vehicle " + std::to_string(vehicleToControl));
+            auto blipIt = std::find_if(blips.begin(), blips.end(), [&](const auto& blip) {
+                return blip.get()->GetEntity() == vehicleToControl;
+            });
+            if (blipIt != blips.end()) {
+                (*blipIt).get()->Delete();
+                blips.erase(blipIt);
+            }
+            else {
+                showSubtitle("No blip for " + std::to_string(vehicleToControl));
+            }
             ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicleToControl, false, true);
             ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&vehicleToControl);
             vehicleToControl = 0;
@@ -267,6 +279,11 @@ void update()
             ENTITY::SET_ENTITY_AS_MISSION_ENTITY(vehicleToControl, true, false);
             showNotification("Controlling vehicle " + std::to_string(vehicle));
             PED::SET_PED_INTO_VEHICLE(playerPed, vehicleToControl, -2);
+            blips.push_back(std::make_unique<BlipX>(vehicleToControl));
+            auto blip = blips.back().get();
+            blip->SetSprite(BlipSpritePersonalVehicleCar);
+            blip->SetName("Remote Control Vehicle");
+            blip->SetColor(eBlipColor::BlipColorYellow);
         }
     }
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("pi")))

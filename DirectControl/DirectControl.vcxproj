@@ -103,13 +103,14 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>D:\git\ScriptHookV_SDK;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <AdditionalOptions>..\..\ScriptHookV_SDK\lib\ScriptHookV.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(DXSDK_DIR)Lib\x64\XInput.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>XInput.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>del $(ProjectDir)$(IntermediateOutputPath)main.obj</Command>
@@ -163,6 +164,7 @@
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\main.h" />
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h" />
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h" />
+    <ClInclude Include="Blip.h" />
     <ClInclude Include="Memory\MemoryPatcher.hpp" />
     <ClInclude Include="Memory\NativeMemory.hpp" />
     <ClInclude Include="Memory\Offsets.hpp" />
