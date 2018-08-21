@@ -195,9 +195,9 @@ Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAhead
     float steeringAngleRelY = lookAheadDistance*cos(actualAngle);
 
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, steeringAngleRelX, steeringAngleRelY, 0.0f);
-    Color cc = c;
-    cc.A = 127;
-    drawSphere(aiForward, 0.5f, cc);
+    //Color cc = c;
+    //cc.A = 127;
+    //drawSphere(aiForward, 0.5f, cc);
 
     for (auto i = 0; i < coords.size(); ++i) {
         float distanceAi = Distance(aiPos, coords[i]);
@@ -214,13 +214,6 @@ Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAhead
         }
     }
 
-    showText(0.75f, 0.10f, 0.5f, fmt("idxAi = %d", smallestToAiIdx));
-
-    expectedLaIdx = (smallestToAiIdx + (int)( (1.5f * lookAheadDistance) / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]))) % coords.size();
-
-    drawSphere(coords[expectedLaIdx], 0.5f, c);
-
-
     // Ensure start/stop is continuous
     if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < coords.size() / 5 && smallestToAiIdx > coords.size() - coords.size() / 5) {
         showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxLoop = %d", what.c_str(), smallestToLaIdx));
@@ -228,7 +221,11 @@ Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAhead
     }
 
     // Ensure track is followed continuously (no cutting off entire sections)
-    if (smallestToLaIdx > expectedLaIdx) {
+    expectedLaIdx = (smallestToAiIdx + (int)((1.0f * lookAheadDistance) / Distance(coords[0], coords[1]))) % coords.size();
+    int expectedLaIdxB = (smallestToAiIdx + (int)((1.0f * lookAheadDistance) / Distance(coords[0], coords[1])));
+    drawSphere(coords[expectedLaIdx], 0.5f, c);
+
+    if (smallestToLaIdx > expectedLaIdxB) {
         showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxCont = %d", what.c_str(), expectedLaIdx));
         return coords[expectedLaIdx];
     }
