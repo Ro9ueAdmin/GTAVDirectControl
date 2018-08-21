@@ -28,6 +28,16 @@ void drawLine(Vector3 a, Vector3 b, Color c) {
     GRAPHICS::DRAW_LINE(a.x, a.y, a.z, b.x, b.y, b.z, c.R, c.G, c.B, c.A);
 }
 
+void drawSphere(Vector3 p, float scale, Color c) {
+    GRAPHICS::DRAW_MARKER(eMarkerType::MarkerTypeDebugSphere, 
+        p.x, p.y, p.z, 
+        0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 
+        scale, scale, scale, 
+        c.R, c.G, c.B, c.A, 
+        false, false, 2, false, nullptr, nullptr, false);
+}
+
 bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
     return vehicle != 0 &&
         ENTITY::DOES_ENTITY_EXIST(vehicle) &&
@@ -169,7 +179,7 @@ float GET_DISTANCE_BETWEEN_COORDS(Vector3 a, Vector3 b) {
     return GAMEPLAY::GET_DISTANCE_BETWEEN_COORDS(a.x, a.y, a.z, b.x, b.y, b.z, false);
 }
 
-Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAheadDistance, std::string what, int iNextRow) {
+Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAheadDistance, std::string what, int iNextRow, Color c) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
@@ -177,9 +187,17 @@ Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAhead
 
     int expectedLaIdx = 0;
 
+    float actualAngle = getSteeringAngle(ai);
+
     Vector3 aiPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0.0f, 0.0f, 0.0f);
-    Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0.0f, lookAheadDistance, 0.0f);
-    float aiSpeed = ENTITY::GET_ENTITY_SPEED(ai);
+
+    float steeringAngleRelX = lookAheadDistance*-sin(actualAngle);
+    float steeringAngleRelY = lookAheadDistance*cos(actualAngle);
+
+    Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, steeringAngleRelX, steeringAngleRelY, 0.0f);
+    Color cc = c;
+    cc.A = 127;
+    drawSphere(aiForward, 0.5f, cc);
 
     for (auto i = 0; i < coords.size(); ++i) {
         float distanceAi = Distance(aiPos, coords[i]);
@@ -196,36 +214,33 @@ Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAhead
         }
     }
 
-    Vector3 nextCoord;
-    if (smallestToAiIdx == coords.size() - 1) {
-        nextCoord = coords[smallestToAiIdx - 1];
-    }
-    else {
-        nextCoord = coords[smallestToAiIdx + 1];
-    }
-    expectedLaIdx = (smallestToAiIdx + (int)( (1.0f * lookAheadDistance) / Distance(coords[smallestToAiIdx], nextCoord))) % coords.size();
+    showText(0.75f, 0.10f, 0.5f, fmt("idxAi = %d", smallestToAiIdx));
+
+    expectedLaIdx = (smallestToAiIdx + (int)( (1.5f * lookAheadDistance) / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]))) % coords.size();
+
+    drawSphere(coords[expectedLaIdx], 0.5f, c);
 
 
     // Ensure start/stop is continuous
     if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < coords.size() / 5 && smallestToAiIdx > coords.size() - coords.size() / 5) {
-        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxLoop = %d", what.c_str(), smallestToLaIdx));
+        showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxLoop = %d", what.c_str(), smallestToLaIdx));
         return coords[smallestToLaIdx];
     }
 
-    // Ensure track is followed continuously
+    // Ensure track is followed continuously (no cutting off entire sections)
     if (smallestToLaIdx > expectedLaIdx) {
-        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxCont = %d", what.c_str(), expectedLaIdx));
-        return coords[(expectedLaIdx) % coords.size()];
+        showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxCont = %d", what.c_str(), expectedLaIdx));
+        return coords[expectedLaIdx];
     }
 
     // Ensure going forwards
     if (smallestToAiIdx >= smallestToLaIdx) {
-        int nextIdx = (smallestToAiIdx + 5) % coords.size();
-        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxForw = %d", what.c_str(), nextIdx));
+        int nextIdx = (smallestToAiIdx + 10) % coords.size();
+        showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxForw = %d", what.c_str(), nextIdx));
         return coords[nextIdx];
     }
 
-    showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxNext = %d", what.c_str(), smallestToLaIdx));
+    showText(0.75f, 0.15f + 0.05f * iNextRow, 0.5f, fmt("%s: idxNext = %d", what.c_str(), smallestToLaIdx));
     return coords[smallestToLaIdx];
 }
 
@@ -243,15 +258,19 @@ void GetControlsFromAI(Vehicle ai, const std::vector<Vector3> &coords, float lim
 
     float lookAheadThrottle = constrain(3.5f * ENTITY::GET_ENTITY_SPEED(ai), 15.0f, 9999.0f);
     float lookAheadSteer = constrain(0.8f * ENTITY::GET_ENTITY_SPEED(ai), 10.0f, 9999.0f);
-    float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(ai), 10.0f, 9999.0f);
+    float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(ai), 15.0f, 9999.0f);
 
-    Vector3 nextPositionThrottle = getCoord(ai, coords, lookAheadThrottle, "T", 0);
-    Vector3 nextPositionSteer = getCoord(ai, coords, lookAheadSteer, "S", 2);
-    Vector3 nextPositionBrake = getCoord(ai, coords, lookAheadBrake, "B", 1);
+    Color red{ 255, 0, 0, 255 };
+    Color green{ 0, 255, 0, 255 };
+    Color blue{ 0, 0, 255, 255 };
 
-    drawLine(aiPosition, nextPositionThrottle, { 0, 255, 0, 255 });
-    drawLine(aiPosition, nextPositionSteer,    { 0, 0, 255, 255 });
-    drawLine(aiPosition, nextPositionBrake,    { 255, 0, 0, 255 });
+    Vector3 nextPositionThrottle = getCoord(ai, coords, lookAheadThrottle, "T", 0, green);
+    Vector3 nextPositionSteer = getCoord(ai, coords, lookAheadSteer, "S", 2, blue);
+    Vector3 nextPositionBrake = getCoord(ai, coords, lookAheadBrake, "B", 1, red);
+
+    drawLine(aiPosition, nextPositionThrottle, green);
+    drawLine(aiPosition, nextPositionSteer,    blue);
+    drawLine(aiPosition, nextPositionBrake,    red);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -304,7 +323,9 @@ void GetControlsFromAI(Vehicle ai, const std::vector<Vector3> &coords, float lim
 
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f;
 
-    float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake, -0.3f, 3.0f);
+    float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake * 0.75f, -0.3f, 3.0f);
+    showText(0.4, 0.30, 0.5, "B: " + std::to_string(maxBrake));
+
     if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 10.0f) {
         float brakeTurn = map(abs(distPerpBrake), 0.0f, 1.0f, 1.0f, 0.0f);
         if (brakeTurn > maxBrake) {
@@ -317,12 +338,12 @@ void GetControlsFromAI(Vehicle ai, const std::vector<Vector3> &coords, float lim
     }
     
     brake = constrain(maxBrake, 0.0f, 1.0f);
-    if (brake > 0.2f) {
-        throttle = 0.0f;
-    }
-    else {
+
+    if (throttle < -0.3f)
         brake = 0.0f;
-    }
+
+    if (brake > 0.7f)
+        throttle = 0.0f;
 
     showText(0.4, 0.05, 0.5, "T: " + std::to_string(throttle));
     showText(0.4, 0.10, 0.5, "B: " + std::to_string(brake));
@@ -415,26 +436,26 @@ void update()
         playerInput = !playerInput;
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordstart"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startrecord"))) {
         playerCoords.clear();
         playerCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
         recording = true;
         showNotification("~g~Record started");
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordstop"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("stoprecord"))) {
         recording = false;
         showNotification("~r~Record stopped");
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordreset"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("clearrecord"))) {
         playerCoords.clear();
         playerCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true)); 
         recording = false;
-        showNotification("~r~Record reset");
+        showNotification("~r~Record cleared");
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordsave"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("savetrack"))) {
         GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
         if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
@@ -452,10 +473,10 @@ void update()
         std::ofstream o("./DirectControl/" + saveFile + ".json");
         o << std::setw(4) << j << std::endl;
 
-        showNotification("~g~Record saved");
+        showNotification("~g~Track saved");
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordload"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("loadtrack"))) {
         GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
         if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
@@ -479,7 +500,7 @@ void update()
             playerCoords.push_back(v);
         }
 
-        showNotification("~g~Record loaded");
+        showNotification("~g~Track loaded");
     }
 
     if (recording) {
