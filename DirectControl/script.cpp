@@ -6,6 +6,14 @@
 #include "XInputControl.h"
 #include "Blip.h"
 
+#include <thirdparty/json.hpp>
+#include <fstream>
+#include <iomanip>
+#include "Util/StringFormat.h"
+
+// for convenience
+using json = nlohmann::json;
+
 Player player;
 Ped playerPed;
 Vehicle vehicleToControl;
@@ -13,6 +21,12 @@ VehicleExtensions ext;
 XInputController controller(2);
 bool playerInput = true;
 std::vector<std::unique_ptr<BlipX>> blips;
+std::vector<Vector3> playerCoords;
+bool recording = false;
+
+void drawLine(Vector3 a, Vector3 b, Color c) {
+    GRAPHICS::DRAW_LINE(a.x, a.y, a.z, b.x, b.y, b.z, c.R, c.G, c.B, c.A);
+}
 
 bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
     return vehicle != 0 &&
@@ -155,59 +169,167 @@ float GET_DISTANCE_BETWEEN_COORDS(Vector3 a, Vector3 b) {
     return GAMEPLAY::GET_DISTANCE_BETWEEN_COORDS(a.x, a.y, a.z, b.x, b.y, b.z, false);
 }
 
-void GetControls(Vehicle ai, Ped pedToStalk, float limitRadians, bool &handbrake, float &throttle, float &brake, float &steer) {
+Vector3 getCoord(Vehicle ai, const std::vector<Vector3> &coords, float lookAheadDistance, std::string what, int iNextRow) {
+    float smallestToLa = 9999.9f;
+    int smallestToLaIdx = 0;
+    float smallestToAi = 9999.9f;
+    int smallestToAiIdx = 0;
+
+    int expectedLaIdx = 0;
+
+    Vector3 aiPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0.0f, 0.0f, 0.0f);
+    Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0.0f, lookAheadDistance, 0.0f);
+    float aiSpeed = ENTITY::GET_ENTITY_SPEED(ai);
+
+    for (auto i = 0; i < coords.size(); ++i) {
+        float distanceAi = Distance(aiPos, coords[i]);
+        float distanceLa = Distance(aiForward, coords[i]);
+
+        if (distanceAi < smallestToAi) {
+            smallestToAi = distanceAi;
+            smallestToAiIdx = i;
+        }
+
+        if (distanceLa < smallestToLa) {
+            smallestToLa = distanceLa;
+            smallestToLaIdx = i;
+        }
+    }
+
+    Vector3 nextCoord;
+    if (smallestToAiIdx == coords.size() - 1) {
+        nextCoord = coords[smallestToAiIdx - 1];
+    }
+    else {
+        nextCoord = coords[smallestToAiIdx + 1];
+    }
+    expectedLaIdx = (smallestToAiIdx + (int)( (1.0f * lookAheadDistance) / Distance(coords[smallestToAiIdx], nextCoord))) % coords.size();
+
+
+    // Ensure start/stop is continuous
+    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < coords.size() / 5 && smallestToAiIdx > coords.size() - coords.size() / 5) {
+        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxLoop = %d", what.c_str(), smallestToLaIdx));
+        return coords[smallestToLaIdx];
+    }
+
+    // Ensure track is followed continuously
+    if (smallestToLaIdx > expectedLaIdx) {
+        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxCont = %d", what.c_str(), expectedLaIdx));
+        return coords[(expectedLaIdx) % coords.size()];
+    }
+
+    // Ensure going forwards
+    if (smallestToAiIdx >= smallestToLaIdx) {
+        int nextIdx = (smallestToAiIdx + 5) % coords.size();
+        showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxForw = %d", what.c_str(), nextIdx));
+        return coords[nextIdx];
+    }
+
+    showText(0.75, 0.15 + 0.05 * iNextRow, 0.5, fmt("%s: idxNext = %d", what.c_str(), smallestToLaIdx));
+    return coords[smallestToLaIdx];
+}
+
+void GetControlsFromAI(Vehicle ai, const std::vector<Vector3> &coords, float limitRadians, bool &handbrake, float &throttle, float &brake, float &steer) {
+    handbrake = false;
+    throttle = 0.0f;
+    brake = 0.0f;
+    steer = 0.0f;
+
+    if (coords.size() < 2)
+        return;
+
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ai, 0, 5.0f, 0.0f);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(ai, 1);
 
-    Vector3 preyPosition = ENTITY::GET_ENTITY_COORDS(pedToStalk, 1);
+    float lookAheadThrottle = constrain(3.5f * ENTITY::GET_ENTITY_SPEED(ai), 15.0f, 9999.0f);
+    float lookAheadSteer = constrain(0.8f * ENTITY::GET_ENTITY_SPEED(ai), 10.0f, 9999.0f);
+    float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(ai), 10.0f, 9999.0f);
 
-    Vector3 preyVector = Normalize(preyPosition - aiPosition);
+    Vector3 nextPositionThrottle = getCoord(ai, coords, lookAheadThrottle, "T", 0);
+    Vector3 nextPositionSteer = getCoord(ai, coords, lookAheadSteer, "S", 2);
+    Vector3 nextPositionBrake = getCoord(ai, coords, lookAheadBrake, "B", 1);
+
+    drawLine(aiPosition, nextPositionThrottle, { 0, 255, 0, 255 });
+    drawLine(aiPosition, nextPositionSteer,    { 0, 0, 255, 255 });
+    drawLine(aiPosition, nextPositionBrake,    { 255, 0, 0, 255 });
+
+    Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
+    Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
+    Vector3 nextVectorBrake = Normalize(nextPositionBrake - aiPosition);
+
     Vector3 forwardVector = Normalize(aiForward - aiPosition);
-    //GRAPHICS::DRAW_LINE(aiPosition.x, aiPosition.y, aiPosition.z, preyPosition.x, preyPosition.y, preyPosition.z, 255, 0, 0, 255);
-    //GRAPHICS::DRAW_LINE(aiForward.x, aiForward.y, aiForward.z, preyPosition.x, preyPosition.y, preyPosition.z, 0, 255, 0, 255);
 
     float aiHeading = atan2(forwardVector.y, forwardVector.x);
-    float preyHeading = atan2(preyVector.y, preyVector.x);
+    float nextHeadingThrottle = atan2(nextVectorThrottle.y, nextVectorThrottle.x);
+    float nextHeadingSteer = atan2(nextVectorSteer.y, nextVectorSteer.x);
+    float nextHeadingBrake = atan2(nextVectorBrake.y, nextVectorBrake.x);
 
-    float turn = atan2(sin(preyHeading - aiHeading), cos(preyHeading - aiHeading));
-    float distance = GET_DISTANCE_BETWEEN_COORDS(aiPosition, preyPosition);
+    float turnThrottle = atan2(sin(nextHeadingThrottle - aiHeading), cos(nextHeadingThrottle - aiHeading));
+    float turnSteer = atan2(sin(nextHeadingSteer - aiHeading), cos(nextHeadingSteer - aiHeading));
+    float turnBrake = atan2(sin(nextHeadingBrake - aiHeading), cos(nextHeadingBrake - aiHeading));
 
-    steer = constrain(turn * 1.33f, -limitRadians, limitRadians);
+    float distanceThrottle = GET_DISTANCE_BETWEEN_COORDS(aiPosition, nextPositionThrottle);
+    float distanceSteer = GET_DISTANCE_BETWEEN_COORDS(aiPosition, nextPositionSteer);
+    float distanceBrake = GET_DISTANCE_BETWEEN_COORDS(aiPosition, nextPositionBrake);
 
-    const float followDistance = 20.0f;
+    const float steerMult = 1.33;
+    steer = constrain(turnSteer * steerMult, -limitRadians, limitRadians);
 
-    if (distance > followDistance) {
-        throttle = map(distance, followDistance, 35.0f, 0.0f, 1.0f);
-        throttle = constrain(throttle, 0.0f, 1.0f);
+    // 145 degrees
+    const float reverseAngle = 2.53073f;
 
-        if (turn > 2.0944 || turn < -2.0944) 
-            throttle = -throttle;
-        
-        handbrake = abs(turn) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f;
-
-        float distPerp = (abs(turn) - 1.5708f) / 1.5708f;
-        throttle *= map(abs(distPerp), 0.0f, 1.0f, 0.5f, 1.0f);
-
-        if (!handbrake && abs(turn) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f) {
-            brake = (abs(turn) - limitRadians) / 3.14f * throttle;
-            throttle *= 0.33f;
+    if (abs(turnThrottle) > reverseAngle) {
+        if (turnThrottle > 0.0f) {
+            steer = -constrain(3.1415f - turnThrottle, -limitRadians, limitRadians);
         }
         else {
-            brake = 0.0f;
+            steer = -constrain(3.1415f + turnThrottle, -limitRadians, limitRadians);
         }
     }
-    else {
+
+    float aiSpeed = ENTITY::GET_ENTITY_SPEED(ai);
+
+    throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
+    throttle = constrain(throttle, 0.0f, 1.0f);
+
+    if (abs(turnThrottle) > reverseAngle) {
+        throttle = -throttle;
+    }
+
+    float distPerpThrottle = (abs(turnThrottle) - 1.5708f) / 1.5708f;
+    float distPerpSteer = (abs(turnSteer) - 1.5708f) / 1.5708f;
+    float distPerpBrake = (abs(turnBrake) - 1.5708f) / 1.5708f;
+
+    throttle *= map(abs(distPerpThrottle), 0.0f, 1.0f, 0.5f, 1.0f);
+
+    handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 12.0f;
+
+    float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake, -0.3f, 3.0f);
+    if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(ai, true).y > 10.0f) {
+        float brakeTurn = map(abs(distPerpBrake), 0.0f, 1.0f, 1.0f, 0.0f);
+        if (brakeTurn > maxBrake) {
+            maxBrake = brakeTurn;
+            showText(0.75, 0.05, 0.4, "B: Angle");
+        }
+        else {
+            showText(0.75, 0.05, 0.4, "B: Dist");
+        }
+    }
+    
+    brake = constrain(maxBrake, 0.0f, 1.0f);
+    if (brake > 0.2f) {
         throttle = 0.0f;
-        brake = map(distance, followDistance / 2.0f, followDistance, 1.0f, 0.0f);
-        brake = constrain(brake, 0.0f, 1.0f);
+    }
+    else {
+        brake = 0.0f;
     }
 
     showText(0.4, 0.05, 0.5, "T: " + std::to_string(throttle));
     showText(0.4, 0.10, 0.5, "B: " + std::to_string(brake));
     showText(0.4, 0.15, 0.5, "S: " + std::to_string(steer));
     showText(0.4, 0.20, 0.5, "H: " + std::to_string(handbrake));
-    showText(0.4, 0.25, 0.5, "Rad: " + std::to_string(turn));
-    showText(0.5, 0.25, 0.5, "Deg: " + std::to_string(rad2deg(turn)));
+    showText(0.4, 0.25, 0.5, "Rad: " + std::to_string(turnThrottle));
+    showText(0.5, 0.25, 0.5, "Deg: " + std::to_string(rad2deg(turnThrottle)));
 }
 
 void UpdateControl() {
@@ -218,15 +340,17 @@ void UpdateControl() {
     float limitRadians = ext.GetMaxSteeringAngle(vehicleToControl);
     float reduction = CalculateReduction(vehicleToControl);
 
-    bool handbrake;
-    float throttle;
-    float brake;
-    float steer;
+    bool handbrake = false;
+    float throttle = 0.0f;
+    float brake = 0.0f;
+    float steer = 0.0f;
 
-    if (playerInput)
+    if (playerInput) {
         GetControls(limitRadians, handbrake, throttle, brake, steer);
-    else
-        GetControls(vehicleToControl, playerPed, limitRadians, handbrake, throttle, brake, steer);
+    }
+    else {
+        GetControlsFromAI(vehicleToControl, playerCoords, limitRadians, handbrake, throttle, brake, steer);
+    }
 
     float desiredHeading = CalculateDesiredHeading(vehicleToControl, actualAngle, limitRadians, steer, reduction);
 
@@ -248,7 +372,8 @@ void UpdateControl() {
     showText(0.1, 0.30, 0.5, "Actual: " + std::to_string(actualAngle));
     showText(0.1, 0.35, 0.5, "Reduct: " + std::to_string(reduction));
 
-    drawSteeringLines(vehicleToControl, actualAngle, desiredHeading);
+    if (playerInput)
+        drawSteeringLines(vehicleToControl, actualAngle, desiredHeading);
 }
 
 void update()
@@ -286,8 +411,93 @@ void update()
             blip->SetColor(eBlipColor::BlipColorYellow);
         }
     }
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("pi")))
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("pi"))) {
         playerInput = !playerInput;
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordstart"))) {
+        playerCoords.clear();
+        playerCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
+        recording = true;
+        showNotification("~g~Record started");
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordstop"))) {
+        recording = false;
+        showNotification("~r~Record stopped");
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordreset"))) {
+        playerCoords.clear();
+        playerCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true)); 
+        recording = false;
+        showNotification("~r~Record reset");
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordsave"))) {
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
+        if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
+            showNotification("Cancelled save");
+            return;
+        }
+        std::string saveFile = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+
+        json j;
+        for (int idx = 0; idx < playerCoords.size(); ++idx) {
+            j[fmt("p%05d", idx)]["x"] = playerCoords[idx].x;
+            j[fmt("p%05d", idx)]["y"] = playerCoords[idx].y;
+            j[fmt("p%05d", idx)]["z"] = playerCoords[idx].z;
+        }
+        std::ofstream o("./DirectControl/" + saveFile + ".json");
+        o << std::setw(4) << j << std::endl;
+
+        showNotification("~g~Record saved");
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("recordload"))) {
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
+        if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
+            showNotification("Cancelled load");
+            return;
+        }
+        std::string loadFile = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+
+        json j;
+        std::ifstream i("./DirectControl/" + loadFile + ".json");
+        i >> j;
+
+        playerCoords.clear();
+        
+        for (auto p : j) {
+            Vector3 v;
+            v.x = p["x"];
+            v.y = p["y"];
+            v.z = p["z"];
+
+            playerCoords.push_back(v);
+        }
+
+        showNotification("~g~Record loaded");
+    }
+
+    if (recording) {
+        Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
+        float mySpeed = ENTITY::GET_ENTITY_SPEED(playerPed);
+        if (Distance(playerCoords.back(), myCoords) > 1.0f/*constrain(map(mySpeed, 1.0f, 20.0f, 1.0f, 2.0f), 0.5f, 20.0f)*/) {
+            playerCoords.push_back(myCoords);
+        }
+    }
+
+    for (int idx = 0; idx < playerCoords.size(); ++idx) {
+        auto coord = playerCoords[idx];
+        float screenX, screenY;
+        bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
+        if (visible && idx != playerCoords.size() - 1) {
+            drawLine(coord, playerCoords[idx + 1], { 255, 255, 0, 255 });
+        }
+    }
 
     if (vehicle == vehicleToControl && playerPed == VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1)) {
         return;

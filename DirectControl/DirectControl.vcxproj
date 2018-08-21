@@ -110,7 +110,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <AdditionalOptions>..\..\ScriptHookV_SDK\lib\ScriptHookV.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>XInput.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(DXSDK_DIR)Lib\x64\XInput.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>del $(ProjectDir)$(IntermediateOutputPath)main.obj</Command>
@@ -137,6 +137,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FloatingPointModel>Fast</FloatingPointModel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -154,6 +155,7 @@
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Util\Logger.cpp" />
     <ClCompile Include="Util\MathExt.cpp" />
+    <ClCompile Include="Util\StringFormat.cpp" />
     <ClCompile Include="Util\TimeHelper.cpp" />
     <ClCompile Include="Util\UIUtils.cpp" />
     <ClCompile Include="Util\Util.cpp" />
@@ -172,6 +174,7 @@
     <ClInclude Include="script.h" />
     <ClInclude Include="Util\Logger.hpp" />
     <ClInclude Include="Util\MathExt.h" />
+    <ClInclude Include="Util\StringFormat.h" />
     <ClInclude Include="Util\TimeHelper.hpp" />
     <ClInclude Include="Util\UIUtils.h" />
     <ClInclude Include="Util\Util.hpp" />
