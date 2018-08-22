@@ -164,6 +164,17 @@ void update(){
         }
     }
 
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("fixai"))) {
+        for (auto& racer : gRacers) {
+            Vehicle v = racer.GetVehicle();
+            VEHICLE::SET_VEHICLE_FIXED(v);
+            VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(v);
+            // TODO: Use vehicle broken flag?
+            //auto address = getScriptHandleBaseAddress(vehicle); 
+            //*(BYTE*)(address + 0xD8) &= ~7;
+        }
+    }
+
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("delai"))) {
         gRacers.clear();
     }
@@ -194,7 +205,7 @@ void update(){
         showNotification("~r~Record stopped");
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("clearrecord"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cleartrack"))) {
         gTrackCoords.clear();
         gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true)); 
         recording = false;
@@ -277,9 +288,31 @@ void update(){
 
 void main() {
     logger.Write(INFO, "Direct vehicle control test script");
-    logger.Write(INFO, "Use the \"cc\" cheat while in a car to take control");
+    logger.Write(INFO, "Direct Control Cheats:");
+    logger.Write(INFO, "\"cc\" to take control of a non-controlled car");
+    logger.Write(INFO, "\"cc\" to release control of a controlled car");
+    logger.Write(INFO, "\"pp\" to switch to passenger seat ");
+    logger.Write(INFO, "\"ddp\" to toggle debug lines");
+    logger.Write(INFO, "Direct Control Controls:");
     logger.Write(INFO, "IJKL as WASD, U is reverse, O is handbrake");
-    logger.Write(INFO, "Use the \"cc\" cheat again to remove control");
+    logger.Write(INFO, "Gamepad #2 for analog input. Hold LB to reverse with throttle.");
+    logger.Write(INFO, "--------------------------------------------------------------------------------");
+    logger.Write(INFO, "AI Cheats:");
+    logger.Write(INFO, "\"addai\" to add ai cars. Follow onscreen instructions. Spawn to your right!");
+    logger.Write(INFO, "\"delai\" to remove AI cars (release to game)");
+    logger.Write(INFO, "\"startai\" to make AI follow current track (default is already started)");
+    logger.Write(INFO, "\"stopai\" to make AI stop following track");
+    logger.Write(INFO, "\"fixai\" to fix all AI cars");
+    logger.Write(INFO, "\"ddai0\" to disable debug lines");
+    logger.Write(INFO, "\"ddai1\" to enable debug lines");
+    logger.Write(INFO, "--------------------------------------------------------------------------------");
+    logger.Write(INFO, "Track Cheats:");
+    logger.Write(INFO, "\"startrecord\" to start recording current location. 1m interval");
+    logger.Write(INFO, "\"stoprecord\" to stop recording current location");
+    logger.Write(INFO, "\"loadtrack\" to load track from file (json)");
+    logger.Write(INFO, "\"savetrack\" to save current track to file (json)");
+    logger.Write(INFO, "\"cleartrack\" to clear all points on current track");
+    logger.Write(INFO, "");
 
     ext.initOffsets();
 

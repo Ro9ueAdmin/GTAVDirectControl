@@ -31,6 +31,10 @@ Racer::Racer(Racer &&other) noexcept :
 }
 
 Racer::~Racer() {
+    mExt.SetThrottleP(mVehicle, 0.0f);
+    mExt.SetBrakeP(mVehicle, 1.0f);
+    mExt.SetSteeringAngle(mVehicle, 0.0f);
+    mExt.SetHandbrake(mVehicle, false);
     mBlip->Delete();
     if (mBlip) {
         mBlip.reset(nullptr);
@@ -58,7 +62,7 @@ bool Racer::GetDebugView() {
 void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, bool & handbrake, float & throttle, float & brake, float & steer) {
     handbrake = false;
     throttle = 0.0f;
-    brake = 0.0f;
+    brake = 1.0f;
     steer = 0.0f;
 
     if (coords.size() < 2)
