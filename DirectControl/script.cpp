@@ -40,6 +40,37 @@ bool amIInCar(Vehicle vehicle, Ped playerPed) {
         PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 }
 
+Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bool managed) {
+    if (!(STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash))) {
+        // Vehicle doesn't exist
+        return 0;
+    }
+    STREAMING::REQUEST_MODEL(hash);
+    DWORD startTime = GetTickCount();
+
+    while (!STREAMING::HAS_MODEL_LOADED(hash)) {
+        WAIT(0);
+        if (GetTickCount() > startTime + timeout) {
+            // Couldn't load model
+            WAIT(0);
+            STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(hash);
+            return 0;
+        }
+    }
+
+    Vehicle veh = VEHICLE::CREATE_VEHICLE(hash, coords.x, coords.y, coords.z, heading, 0, 1);
+    Vehicle copy = veh;
+    VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(veh);
+
+    if (!managed) {
+        WAIT(0);
+        STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(hash);
+        ENTITY::SET_ENTITY_AS_MISSION_ENTITY(veh, false, true);
+        ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&veh);
+    }
+    return copy;
+}
+
 void update(){
     player = PLAYER::PLAYER_ID();
     playerPed = PLAYER::PLAYER_PED_ID();
@@ -72,6 +103,66 @@ void update(){
             showNotification("Toggling debug for " + std::to_string(gPlayerRacer->GetVehicle()));
             gPlayerRacer->SetDebugView(!gPlayerRacer->GetDebugView());
         }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("addai"))) {
+        showNotification("Enter number of AIs to add");
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
+        if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
+            showNotification("Cancelled AI Spawn");
+            return;
+        }
+        std::string numRacersString = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+        int numRacers = std::stoi(numRacersString);
+
+        showNotification("Enter AI model (empty = kuruma)");
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
+        if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
+            showNotification("Cancelled AI Spawn");
+            return;
+        }
+
+        std::string racerModelName = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+        if (racerModelName.empty()) {
+            racerModelName = "kuruma";
+        }
+        Hash model = GAMEPLAY::GET_HASH_KEY((char*)racerModelName.c_str());
+        if (!STREAMING::IS_MODEL_IN_CDIMAGE(model)) {
+            showNotification("Model not valid: Cancelling AI Spawn");
+            return;
+        }
+
+        for (auto i = 0; i < numRacers; ++i) {
+            float offsetX = 0.0f;
+            Vector3 modelDimMin, modelDimMax;
+            GAMEPLAY::GET_MODEL_DIMENSIONS(model, &modelDimMin, &modelDimMax);
+
+            // to the right
+            // width + margin + width again 
+            offsetX = ((modelDimMax.x - modelDimMin.x) / 2.0f) + (1.0f + ((modelDimMax.x - modelDimMin.x) / 2.0f)) * (float)(i + 1);
+
+            Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
+            Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
+            gRacers.emplace_back(spawnedVehicle, ext);
+        }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startai"))) {
+        for (auto& racer : gRacers) {
+            racer.SetActive(true);
+        }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("stopai"))) {
+        for (auto& racer : gRacers) {
+            racer.SetActive(false);
+        }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("delai"))) {
+        gRacers.clear();
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("ddai0"))) {

@@ -8,8 +8,20 @@
 Racer::Racer(Vehicle vehicle, VehicleExtensions& ext) :
     mVehicle(vehicle),
     mExt(ext),
-    mBlip(nullptr),
+    mActive(true),
     mDebugView(false) {
+    ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
+    mBlip = std::make_unique<BlipX>(mVehicle);
+    mBlip->SetSprite(BlipSpritePersonalVehicleCar);
+    mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip->SetColor(BlipColorYellow);
+}
+
+Racer::Racer(Racer &&other) noexcept :
+    mVehicle(other.mVehicle),
+    mExt(other.mExt),
+    mActive(other.mActive),
+    mDebugView(other.mDebugView) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -19,8 +31,19 @@ Racer::Racer(Vehicle vehicle, VehicleExtensions& ext) :
 
 Racer::~Racer() {
     mBlip->Delete();
+    if (mBlip) {
+        mBlip.reset(nullptr);
+    }
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
     ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
+}
+
+bool Racer::GetActive() {
+    return mActive
+}
+
+void Racer::SetActive(bool value) {
+    mActive = value;
 }
 
 void Racer::SetDebugView(bool value) {
@@ -38,6 +61,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     steer = 0.0f;
 
     if (coords.size() < 2)
+        return;
+
+    if (!mActive)
         return;
 
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
