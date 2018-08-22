@@ -39,7 +39,7 @@ Racer::~Racer() {
 }
 
 bool Racer::GetActive() {
-    return mActive
+    return mActive;
 }
 
 void Racer::SetActive(bool value) {

@@ -113,7 +113,10 @@ void update(){
             showNotification("Cancelled AI Spawn");
             return;
         }
+
         std::string numRacersString = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+        if (numRacersString.empty())
+            numRacersString = "1";
         int numRacers = std::stoi(numRacersString);
 
         showNotification("Enter AI model (empty = kuruma)");
@@ -125,9 +128,9 @@ void update(){
         }
 
         std::string racerModelName = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
-        if (racerModelName.empty()) {
+        if (racerModelName.empty())
             racerModelName = "kuruma";
-        }
+        
         Hash model = GAMEPLAY::GET_HASH_KEY((char*)racerModelName.c_str());
         if (!STREAMING::IS_MODEL_IN_CDIMAGE(model)) {
             showNotification("Model not valid: Cancelling AI Spawn");
