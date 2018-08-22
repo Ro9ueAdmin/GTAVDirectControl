@@ -27,6 +27,7 @@ Racer::Racer(Racer &&other) noexcept :
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
     mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
+    other.mVehicle = 0;
 }
 
 Racer::~Racer() {
