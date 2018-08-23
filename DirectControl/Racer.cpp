@@ -31,16 +31,18 @@ Racer::Racer(Racer &&other) noexcept :
 }
 
 Racer::~Racer() {
-    mExt.SetThrottleP(mVehicle, 0.0f);
-    mExt.SetBrakeP(mVehicle, 1.0f);
-    mExt.SetSteeringAngle(mVehicle, 0.0f);
-    mExt.SetHandbrake(mVehicle, false);
+    if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
+        mExt.SetThrottleP(mVehicle, 0.0f);
+        mExt.SetBrakeP(mVehicle, 1.0f);
+        mExt.SetSteeringAngle(mVehicle, 0.0f);
+        mExt.SetHandbrake(mVehicle, false);
+        ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
+        ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
+    }
     mBlip->Delete();
     if (mBlip) {
         mBlip.reset(nullptr);
     }
-    ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
-    ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
 }
 
 bool Racer::GetActive() {
