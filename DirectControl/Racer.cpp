@@ -9,7 +9,7 @@ Racer::Racer(Vehicle vehicle, VehicleExtensions& ext) :
     mVehicle(vehicle),
     mExt(ext),
     mActive(true),
-    mDebugView(false) {
+    mDebugView(true) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
