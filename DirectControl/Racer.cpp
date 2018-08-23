@@ -111,25 +111,25 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     steer = constrain(turnSteer * steerMult, -limitRadians, limitRadians);
 
     // 145 degrees
-    const float reverseAngle = 2.53073f;
+    //const float reverseAngle = 2.53073f;
 
-    if (abs(turnThrottle) > reverseAngle) {
-        if (turnThrottle > 0.0f) {
-            steer = -constrain(3.1415f - turnThrottle, -limitRadians, limitRadians);
-        }
-        else {
-            steer = -constrain(3.1415f + turnThrottle, -limitRadians, limitRadians);
-        }
-    }
+    //if (abs(turnThrottle) > reverseAngle) {
+    //    if (turnThrottle > 0.0f) {
+    //        steer = -constrain(3.1415f - turnThrottle, -limitRadians, limitRadians);
+    //    }
+    //    else {
+    //        steer = -constrain(3.1415f + turnThrottle, -limitRadians, limitRadians);
+    //    }
+    //}
 
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
     throttle = constrain(throttle, 0.0f, 1.0f);
 
-    if (abs(turnThrottle) > reverseAngle) {
-        throttle = -throttle;
-    }
+    //if (abs(turnThrottle) > reverseAngle) {
+    //    throttle = -throttle;
+    //}
 
     float distPerpThrottle = (abs(turnThrottle) - 1.5708f) / 1.5708f;
     float distPerpSteer = (abs(turnSteer) - 1.5708f) / 1.5708f;
