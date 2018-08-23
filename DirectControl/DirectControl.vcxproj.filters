@@ -29,12 +29,9 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="Racer.cpp" />
+    <ClCompile Include="PlayerRacer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\main.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h" />
     <ClInclude Include="script.h" />
     <ClInclude Include="Util\Logger.hpp">
       <Filter>Util</Filter>
@@ -66,6 +63,19 @@
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="Racer.h" />
+    <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ScriptHookV_SDK\inc\main.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerRacer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">
@@ -73,6 +83,9 @@
     </Filter>
     <Filter Include="Util">
       <UniqueIdentifier>{eccfe600-6937-4011-a8d0-96b334bc2909}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ScriptHookV">
+      <UniqueIdentifier>{dbac57a1-b74f-4be6-bfcf-f239001cc98a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

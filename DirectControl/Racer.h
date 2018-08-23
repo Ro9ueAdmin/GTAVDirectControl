@@ -3,7 +3,6 @@
 #include <inc/types.h>
 #include "Blip.h"
 #include "Memory/VehicleExtensions.hpp"
-#include "XInputControl.h"
 
 class Racer {
 public:
@@ -39,16 +38,4 @@ protected:
     std::unique_ptr<BlipX> mBlip;
     bool mActive;
     bool mDebugView;
-};
-
-class PlayerRacer : public Racer {
-
-public:
-    PlayerRacer(Vehicle vehicle, VehicleExtensions &ext, int playerNumber);
-    void UpdateControl();
-private:
-    void getControls(float limitRadians, bool &handbrake, float &throttle,
-        float &brake, float &steer);
-    void drawDebugLines(float steeringAngle, float nextAngle);
-    XInputController mXInput;
 };

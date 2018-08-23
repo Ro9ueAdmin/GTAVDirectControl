@@ -80,10 +80,6 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float lookAheadSteer = constrain(0.8f * ENTITY::GET_ENTITY_SPEED(mVehicle), 10.0f, 9999.0f);
     float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
 
-    Color red{ 255, 0, 0, 255 };
-    Color green{ 0, 255, 0, 255 };
-    Color blue{ 0, 0, 255, 255 };
-
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle);
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer);
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake);
@@ -159,6 +155,14 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         throttle = 0.0f;
 
     if (mDebugView) {
+        Color red{ 255, 0, 0, 255 };
+        Color green{ 0, 255, 0, 255 };
+        Color blue{ 0, 0, 255, 255 };
+        Color white{ 255, 255, 255, 255 };
+
+        Vector3 nextPositionPhysics = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
+        drawLine(aiPosition, nextPositionPhysics, white);
+        drawSphere(nextPositionPhysics, 0.25f, white);
         drawLine(aiPosition, nextPositionThrottle, green);
         drawLine(aiPosition, nextPositionSteer, blue);
         drawLine(aiPosition, nextPositionBrake, red);
@@ -333,123 +337,4 @@ float Racer::calculateDesiredHeading(float steeringAngle, float steeringMax, flo
 
 
     return correction;
-}
-
-PlayerRacer::PlayerRacer(Vehicle vehicle, VehicleExtensions &ext, int playerNumber) :
-    Racer(vehicle, ext),
-    mXInput(playerNumber) {
-    
-}
-
-void PlayerRacer::UpdateControl() {
-    if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
-        VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
-
-    float actualAngle = getSteeringAngle();
-    float limitRadians = mExt.GetMaxSteeringAngle(mVehicle);
-    float reduction = calculateReduction();
-
-    bool handbrake = false;
-    float throttle = 0.0f;
-    float brake = 0.0f;
-    float steer = 0.0f;
-
-    getControls(limitRadians, handbrake, throttle, brake, steer);
-
-    float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
-
-    mExt.SetThrottleP(mVehicle, throttle);
-    mExt.SetBrakeP(mVehicle, brake);
-    if (brake > 0.0f)
-        VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
-    else
-        VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
-
-    mExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
-    mExt.SetHandbrake(mVehicle, handbrake);
-
-    if (mDebugView) {
-        drawDebugLines(actualAngle, desiredHeading);
-    }
-}
-
-void PlayerRacer::getControls(float limitRadians, bool& handbrake, float& throttle, float& brake, float& steer) {
-    mXInput.Update();
-    if (mXInput.IsAvailable()) {
-        handbrake = mXInput.IsButtonPressed(XInputController::RightShoulder);
-        throttle = mXInput.GetAnalogValue(XInputController::RightTrigger);
-        brake = mXInput.GetAnalogValue(XInputController::LeftTrigger);
-        steer = mXInput.GetAnalogValue(XInputController::LeftThumbLeft);
-        if (steer == 0.0f) steer = -mXInput.GetAnalogValue(XInputController::LeftThumbRight);
-        bool reverseSwitch = mXInput.IsButtonPressed(XInputController::LeftShoulder);
-        if (reverseSwitch)
-            throttle = -mXInput.GetAnalogValue(XInputController::RightTrigger);
-
-        float buzz = 0.0f;
-        auto effects = mExt.GetWheelSkidSmokeEffect(mVehicle);
-        for (auto effect : effects) {
-            buzz += effect;
-        }
-        buzz = abs(buzz);
-        buzz /= (float)effects.size();
-        buzz *= 2000.0f;
-        if (buzz > 65535.0f)
-            buzz = 65535.0f;
-
-        if (buzz > 10.0f) {
-            mXInput.Vibrate((int)buzz, (int)buzz);
-        }
-        else {
-            mXInput.Vibrate(0, 0);
-        }
-    }
-    else {
-        handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
-        throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
-        float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
-        if (reverse > 0.5)
-            throttle = -1.0f;
-
-        brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
-        float left = GetAsyncKeyState('J') & 0x8000 ? limitRadians : 0.0f;
-        float right = GetAsyncKeyState('L') & 0x8000 ? limitRadians : 0.0f;
-        steer = left;
-        if (right > 0.5f) steer = -right;
-    }
-}
-
-void PlayerRacer::drawDebugLines(float steeringAngle, float nextAngle) {
-    Vector3 velocityWorld = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
-    Vector3 positionWorld = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
-    Vector3 travelWorld = velocityWorld + positionWorld;
-    Vector3 travelRelative = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(
-        mVehicle, travelWorld.x, travelWorld.y, travelWorld.z);
-
-    Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
-    Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(
-        mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle) * -sin(rotationVelocity.z),
-        ENTITY::GET_ENTITY_SPEED(mVehicle) * cos(rotationVelocity.z), 0.0f);
-    Vector3 turnRelative = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(
-        mVehicle, turnWorld.x, turnWorld.y, turnWorld.z);
-    float turnRelativeNormX = (travelRelative.x + turnRelative.x) / 2.0f;
-    float turnRelativeNormY = (travelRelative.y + turnRelative.y) / 2.0f;
-    Vector3 turnWorldNorm = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(
-        mVehicle, turnRelativeNormX, turnRelativeNormY, 0.0f);
-
-    float steeringAngleRelX = ENTITY::GET_ENTITY_SPEED(mVehicle) * -sin(steeringAngle);
-    float steeringAngleRelY = ENTITY::GET_ENTITY_SPEED(mVehicle) * cos(steeringAngle);
-    Vector3 steeringWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(
-        mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
-
-    float nextRelX = ENTITY::GET_ENTITY_SPEED(mVehicle) * -sin(nextAngle);
-    float nextRelY = ENTITY::GET_ENTITY_SPEED(mVehicle) * cos(nextAngle);
-    Vector3 nextWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, nextRelX, nextRelY, 0.0f);
-
-    drawLine(positionWorld, travelWorld, { 0, 255, 0, 255 });
-    drawLine(positionWorld, turnWorldNorm, { 255, 0, 0, 255 });
-    drawLine(positionWorld, steeringWorld, {255, 0, 255, 255});
-    drawLine(positionWorld, nextWorld, { 255, 255, 255, 255 });
-    Vector3 up{};
-    up.z = 2.0f;
-    drawSphere(positionWorld + up, 0.25f, { 255, 0, 0, 255 });
 }

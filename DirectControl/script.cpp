@@ -13,6 +13,7 @@
 #include "Util/MathExt.h"
 #include "Util/StringFormat.h"
 #include "Racer.h"
+#include "PlayerRacer.h"
 
 using json = nlohmann::json;
 
