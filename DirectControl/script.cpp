@@ -2,43 +2,26 @@
 
 #include <fstream>
 #include <iomanip>
+#include <filesystem>
 #include <thirdparty/json.hpp>
 
 #include "Memory/VehicleExtensions.hpp"
 #include "XInputControl.h"
 #include "Blip.h"
-
 #include "Util/Logger.hpp"
 #include "Util/UIUtils.h"
 #include "Util/MathExt.h"
 #include "Util/StringFormat.h"
 #include "Racer.h"
 
-// for convenience
 using json = nlohmann::json;
 
-Player player;
-Ped playerPed;
-
-VehicleExtensions ext;
+VehicleExtensions gExt;
+bool gRecording = false;
 
 std::vector<Vector3> gTrackCoords;
-bool recording = false;
-
 std::vector<Racer> gRacers;
 std::unique_ptr<PlayerRacer> gPlayerRacer(nullptr);
-
-bool isVehicleAvailable(Vehicle vehicle, Ped playerPed) {
-    return vehicle != 0 &&
-        ENTITY::DOES_ENTITY_EXIST(vehicle) &&
-        playerPed == VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1);
-}
-
-bool amIInCar(Vehicle vehicle, Ped playerPed) {
-    return vehicle != 0 &&
-        ENTITY::DOES_ENTITY_EXIST(vehicle) &&
-        PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
-}
 
 Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bool managed) {
     if (!(STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash))) {
@@ -72,8 +55,7 @@ Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bo
 }
 
 void update(){
-    player = PLAYER::PLAYER_ID();
-    playerPed = PLAYER::PLAYER_PED_ID();
+    Ped playerPed = PLAYER::PLAYER_PED_ID();
     Vehicle vehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cc"))) {
@@ -84,7 +66,7 @@ void update(){
         else {
             if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
                 showNotification("Controlling vehicle " + std::to_string(vehicle));
-                gPlayerRacer = std::make_unique<PlayerRacer>(vehicle, ext, 2);
+                gPlayerRacer = std::make_unique<PlayerRacer>(vehicle, gExt, 2);
             }
             else {
                 showNotification("No vehicle to control");
@@ -117,8 +99,13 @@ void update(){
         std::string numRacersString = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
         if (numRacersString.empty())
             numRacersString = "1";
-        int numRacers = std::stoi(numRacersString);
-
+        int numRacers;
+        try {
+            numRacers = std::stoi(numRacersString);
+        }
+        catch (const std::invalid_argument&) {
+            numRacers = 1;
+        }
         showNotification("Enter AI model (empty = kuruma)");
         GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
@@ -139,16 +126,25 @@ void update(){
 
         for (auto i = 0; i < numRacers; ++i) {
             float offsetX = 0.0f;
-            Vector3 modelDimMin, modelDimMax;
+            Vector3 modelDimMin, modelDimMax, myDimMin, myDimMax;
             GAMEPLAY::GET_MODEL_DIMENSIONS(model, &modelDimMin, &modelDimMax);
 
+            if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+                Hash myModel = ENTITY::GET_ENTITY_MODEL(vehicle);
+                GAMEPLAY::GET_MODEL_DIMENSIONS(myModel, &myDimMin, &myDimMax);
+            }
+            else {
+                myDimMin = modelDimMin;
+                myDimMax = modelDimMax;
+            }
+
             // to the right
-            // width + margin + width again 
-            offsetX = ((modelDimMax.x - modelDimMin.x) / 2.0f) + (1.0f + ((modelDimMax.x - modelDimMin.x) / 2.0f)) * (float)(i + 1);
+            // my width + ( margin + spawn width ) * iteration
+            offsetX = ((myDimMax.x - myDimMin.x) / 2.0f) + (1.0f + ((modelDimMax.x - modelDimMin.x) / 2.0f)) * (float)(i + 1);
 
             Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
             Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
-            gRacers.emplace_back(spawnedVehicle, ext);
+            gRacers.emplace_back(spawnedVehicle, gExt);
         }
     }
 
@@ -196,19 +192,19 @@ void update(){
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startrecord"))) {
         gTrackCoords.clear();
         gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
-        recording = true;
+        gRecording = true;
         showNotification("~g~Record started");
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("stoprecord"))) {
-        recording = false;
+        gRecording = false;
         showNotification("~r~Record stopped");
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cleartrack"))) {
         gTrackCoords.clear();
         gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true)); 
-        recording = false;
+        gRecording = false;
         showNotification("~r~Record cleared");
     }
 
@@ -234,6 +230,12 @@ void update(){
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("loadtrack"))) {
+        std::string path = "./DirectControl";
+        for (auto & p : std::filesystem::directory_iterator(path)) {
+            if (p.path().extension() == ".json")
+                showNotification(fmt("Track: ~b~%s", p.path().stem().string().c_str()));
+        }
+
         GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
         if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
@@ -244,6 +246,10 @@ void update(){
 
         json j;
         std::ifstream i("./DirectControl/" + loadFile + ".json");
+        if (!i.is_open()) {
+            showNotification("Couldn't find file");
+            return;
+        }
         i >> j;
 
         gTrackCoords.clear();
@@ -260,7 +266,7 @@ void update(){
         showNotification("~g~Track loaded");
     }
 
-    if (recording) {
+    if (gRecording) {
         Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
         float mySpeed = ENTITY::GET_ENTITY_SPEED(playerPed);
         if (Distance(gTrackCoords.back(), myCoords) > 1.0f/*constrain(map(mySpeed, 1.0f, 20.0f, 1.0f, 2.0f), 0.5f, 20.0f)*/) {
@@ -314,7 +320,7 @@ void main() {
     logger.Write(INFO, "\"cleartrack\" to clear all points on current track");
     logger.Write(INFO, "");
 
-    ext.initOffsets();
+    gExt.initOffsets();
 
     while (true) {
 		update();
