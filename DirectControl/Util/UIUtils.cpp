@@ -107,3 +107,30 @@ void drawSphere(Vector3 p, float scale, Color c) {
         c.R, c.G, c.B, c.A,
         false, false, 2, false, nullptr, nullptr, false);
 }
+
+void drawChevron(Vector3 pos, Vector3 dir, Vector3 rot, float scale, float arrow, Color c) {
+    eMarkerType marker = MarkerTypeChevronUpx1;
+    if (arrow > 0.40f) {
+        marker = MarkerTypeChevronUpx2;
+    }
+    if (arrow > 0.75f) {
+        marker = MarkerTypeChevronUpx3;
+    }
+    switch(marker) {
+    case MarkerTypeChevronUpx1:
+        scale *= 0.60f;
+        break;
+    case MarkerTypeChevronUpx2:
+        scale *= 0.70f;
+        break;
+    default:
+        break;
+    }
+    GRAPHICS::DRAW_MARKER(marker,
+        pos.x, pos.y, pos.z,
+        dir.x, dir.y, dir.z,
+        rot.x, rot.y, rot.z,
+        scale, scale, scale,
+        c.R, c.G, c.B, c.A,
+        false, false, 2, false, nullptr, nullptr, false);
+}

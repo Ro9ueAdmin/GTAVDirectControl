@@ -160,9 +160,29 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         drawLine(aiPosition, nextPositionThrottle, green);
         drawLine(aiPosition, nextPositionSteer, blue);
         drawLine(aiPosition, nextPositionBrake, red);
-        Vector3 up{};
-        up.z = 2.0f;
-        drawSphere(aiPosition + up, 0.25f, { 0,0,0,255 });
+
+        Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+        Vector3 min, max;
+        GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &min, &max);
+        Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 1.0f);
+
+        float actualAngle = getSteeringAngle() - deg2rad(90.0f);
+        float steeringAngleRelX = -sin(actualAngle);
+        float steeringAngleRelY = cos(actualAngle);
+
+        Vector3 forward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
+        Vector3 dir = forward - p;
+        Vector3 rot{};
+        rot.y = 90.0f;
+
+        Color c{
+            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 127.0f, 255.0f)), 0, 255),
+            constrain(static_cast<int>(map(brake, 1.0f, 0.0f, 127.0f, 255.0f)), 0, 255),
+            0,
+            255
+        };
+
+        drawChevron(up, dir, rot, 1.0f, throttle, c);
     }
 }
 
