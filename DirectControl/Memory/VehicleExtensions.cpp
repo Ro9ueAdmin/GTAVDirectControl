@@ -10,6 +10,9 @@
 #include "Util/MathExt.h"
 #include "Util/Logger.hpp"
 
+// _the_ instance
+VehicleExtensions gExt;
+
 eGameVersion g_gameVersion = getGameVersion();
 
 int findOffset(const std::map<int, int, std::greater<int>> &offsets) {

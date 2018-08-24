@@ -2,11 +2,10 @@
 #include <vector>
 #include <inc/types.h>
 #include "Blip.h"
-#include "Memory/VehicleExtensions.hpp"
 
 class Racer {
 public:
-    Racer(Vehicle vehicle, VehicleExtensions& ext);
+    Racer(Vehicle vehicle);
 
     // non-copyable
     Racer(const Racer& other) = delete;
@@ -14,7 +13,7 @@ public:
 
     // move
     Racer(Racer&& other) noexcept;
-    Racer& operator= (Racer&& other) noexcept = delete;
+    Racer& operator= (Racer&& other) noexcept;
 
     ~Racer();
 
@@ -34,7 +33,6 @@ protected:
                                   float reduction);
 
     Vehicle mVehicle;
-    VehicleExtensions& mExt;
     std::unique_ptr<BlipX> mBlip;
     bool mActive;
     bool mDebugView;

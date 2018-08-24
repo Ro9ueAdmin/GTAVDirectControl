@@ -4,10 +4,10 @@
 #include "Util/MathExt.h"
 #include "Util/Color.h"
 #include "Util/UIUtils.h"
+#include "Memory/VehicleExtensions.hpp"
 
-Racer::Racer(Vehicle vehicle, VehicleExtensions& ext) :
+Racer::Racer(Vehicle vehicle) :
     mVehicle(vehicle),
-    mExt(ext),
     mActive(true),
     mDebugView(true) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
@@ -19,7 +19,6 @@ Racer::Racer(Vehicle vehicle, VehicleExtensions& ext) :
 
 Racer::Racer(Racer &&other) noexcept :
     mVehicle(other.mVehicle),
-    mExt(other.mExt),
     mActive(other.mActive),
     mDebugView(other.mDebugView) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
@@ -30,12 +29,24 @@ Racer::Racer(Racer &&other) noexcept :
     other.mVehicle = 0;
 }
 
+Racer & Racer::operator=(Racer &&other) noexcept {
+    if (this != &other) {
+        mVehicle = other.mVehicle;
+        mBlip = std::make_unique<BlipX>(mVehicle);
+        mBlip->SetSprite(BlipSpritePersonalVehicleCar);
+        mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+        mBlip->SetColor(BlipColorYellow);
+        other.mVehicle = 0;
+    }
+    return *this;
+}
+
 Racer::~Racer() {
     if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
-        mExt.SetThrottleP(mVehicle, 0.0f);
-        mExt.SetBrakeP(mVehicle, 1.0f);
-        mExt.SetSteeringAngle(mVehicle, 0.0f);
-        mExt.SetHandbrake(mVehicle, false);
+        gExt.SetThrottleP(mVehicle, 0.0f);
+        gExt.SetBrakeP(mVehicle, 1.0f);
+        gExt.SetSteeringAngle(mVehicle, 0.0f);
+        gExt.SetHandbrake(mVehicle, false);
         ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
         ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
     }
@@ -197,7 +208,7 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords) {
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
 
     float actualAngle = getSteeringAngle();
-    float limitRadians = mExt.GetMaxSteeringAngle(mVehicle);
+    float limitRadians = gExt.GetMaxSteeringAngle(mVehicle);
     float reduction = calculateReduction();
 
     bool handbrake = false;
@@ -209,15 +220,15 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords) {
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
-    mExt.SetThrottleP(mVehicle, throttle);
-    mExt.SetBrakeP(mVehicle, brake);
+    gExt.SetThrottleP(mVehicle, throttle);
+    gExt.SetBrakeP(mVehicle, brake);
     if (brake > 0.0f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    mExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
-    mExt.SetHandbrake(mVehicle, handbrake);
+    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
+    gExt.SetHandbrake(mVehicle, handbrake);
 }
 
 Vehicle Racer::GetVehicle() {
@@ -284,7 +295,7 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
 
 float Racer::getSteeringAngle() {
     float largestAngle = 0.0f;
-    auto angles = mExt.GetWheelSteeringAngles(mVehicle);
+    auto angles = gExt.GetWheelSteeringAngles(mVehicle);
 
     for (auto angle : angles) {
         if (abs(angle) > abs(largestAngle)) {

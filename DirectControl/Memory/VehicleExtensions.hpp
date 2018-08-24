@@ -203,3 +203,5 @@ private:
     int wheelFlagsOffset = 0;
 
 };
+
+extern VehicleExtensions gExt;

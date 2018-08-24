@@ -4,9 +4,10 @@
 #include "Util/MathExt.h"
 #include "Util/Color.h"
 #include "Util/UIUtils.h"
+#include "Memory/VehicleExtensions.hpp"
 
-PlayerRacer::PlayerRacer(Vehicle vehicle, VehicleExtensions &ext, int playerNumber) :
-    Racer(vehicle, ext),
+PlayerRacer::PlayerRacer(Vehicle vehicle, int playerNumber) :
+    Racer(vehicle),
     mXInput(playerNumber) {
 
 }
@@ -16,7 +17,7 @@ void PlayerRacer::UpdateControl() {
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
 
     float actualAngle = getSteeringAngle();
-    float limitRadians = mExt.GetMaxSteeringAngle(mVehicle);
+    float limitRadians = gExt.GetMaxSteeringAngle(mVehicle);
     float reduction = calculateReduction();
 
     bool handbrake = false;
@@ -28,15 +29,15 @@ void PlayerRacer::UpdateControl() {
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
-    mExt.SetThrottleP(mVehicle, throttle);
-    mExt.SetBrakeP(mVehicle, brake);
+    gExt.SetThrottleP(mVehicle, throttle);
+    gExt.SetBrakeP(mVehicle, brake);
     if (brake > 0.0f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    mExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
-    mExt.SetHandbrake(mVehicle, handbrake);
+    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
+    gExt.SetHandbrake(mVehicle, handbrake);
 
     if (mDebugView) {
         drawDebugLines(actualAngle, desiredHeading);
@@ -56,7 +57,7 @@ void PlayerRacer::getControls(float limitRadians, bool& handbrake, float& thrott
             throttle = -mXInput.GetAnalogValue(XInputController::RightTrigger);
 
         float buzz = 0.0f;
-        auto effects = mExt.GetWheelSkidSmokeEffect(mVehicle);
+        auto effects = gExt.GetWheelSkidSmokeEffect(mVehicle);
         for (auto effect : effects) {
             buzz += effect;
         }

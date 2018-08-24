@@ -17,7 +17,6 @@
 
 using json = nlohmann::json;
 
-VehicleExtensions gExt;
 bool gRecording = false;
 
 std::vector<Vector3> gTrackCoords;
@@ -67,7 +66,7 @@ void update(){
         else {
             if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
                 showNotification("Controlling vehicle " + std::to_string(vehicle));
-                gPlayerRacer = std::make_unique<PlayerRacer>(vehicle, gExt, 2);
+                gPlayerRacer = std::make_unique<PlayerRacer>(vehicle, 2);
             }
             else {
                 showNotification("No vehicle to control");
@@ -145,7 +144,7 @@ void update(){
 
             Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
             Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
-            gRacers.emplace_back(spawnedVehicle, gExt);
+            gRacers.emplace_back(spawnedVehicle);
         }
     }
 

@@ -5,7 +5,7 @@
 class PlayerRacer : public Racer {
 
 public:
-    PlayerRacer(Vehicle vehicle, VehicleExtensions &ext, int playerNumber);
+    PlayerRacer(Vehicle vehicle, int playerNumber);
     void UpdateControl();
 private:
     void getControls(float limitRadians, bool &handbrake, float &throttle,
