@@ -97,24 +97,35 @@ void update(){
             }
             if (itFound != gRacers.end()) {
                 gRacers.erase(itFound);
-                showNotification(fmt("Remove AI from %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
+                showNotification(fmt("Remove AI from ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
-
+            else {
+                showNotification("~r~No AI on this vehicle");
+            }
+        }
+        else {
+            showNotification("~r~Player not in vehicle");
         }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("makeai1"))) {
         if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
-            auto itFound = gRacers.begin();
-            for (auto it = gRacers.begin(); it != gRacers.end(); ++it) {
-                if (it->GetVehicle() == vehicle) {
-                    itFound = it;
+            bool found = false;
+            for (auto &gRacer : gRacers) {
+                if (gRacer.GetVehicle() == vehicle) {
+                    found = true;
                 }
             }
-            if (itFound == gRacers.end()) {
+            if (!found) {
                 gRacers.emplace_back(vehicle);
-                showNotification(fmt("Adding AI to %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
+                showNotification(fmt("Adding AI to ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
+            else {
+                showNotification("~r~AI already on this vehicle");
+            }
+        }
+        else {
+            showNotification("~r~Player not in vehicle");
         }
     }
 
