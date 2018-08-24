@@ -144,6 +144,20 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     throttle *= map(abs(distPerpThrottle), 0.0f, 1.0f, 0.5f, 1.0f);
 
+    // Decrease throttle when starting to spin out
+    // TODO: Also prevents powerslide, need to tweak for balance between grip and yeet
+    Vector3 nextPositionVelocity = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
+
+    Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
+    Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(rotationVelocity.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(rotationVelocity.z), 0.0f);
+
+    float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
+
+    float spinoutMult = constrain(map(angle, deg2rad(0.0f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
+
+    if (aiSpeed > 5.0f)
+        throttle *= spinoutMult;
+
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
 
     float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake * 0.75f, -0.3f, 3.0f);
@@ -170,14 +184,13 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         Color green{ 0, 255, 0, 255 };
         Color blue{ 0, 0, 255, 255 };
         Color white{ 255, 255, 255, 255 };
+        Color yellow{ 255, 255, 0, 255 };
 
-        Vector3 nextPositionPhysics = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
-        drawLine(aiPosition, nextPositionPhysics, white);
-        drawSphere(nextPositionPhysics, 0.25f, white);
         drawLine(aiPosition, nextPositionThrottle, green);
         drawLine(aiPosition, nextPositionSteer, blue);
         drawLine(aiPosition, nextPositionBrake, red);
 
+        // draw chevron
         Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
         Vector3 min, max;
         GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &min, &max);
@@ -200,6 +213,12 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         };
 
         drawChevron(up, dir, rot, 1.0f, throttle, c);
+
+        // spinout ratio
+        drawLine(aiPosition, nextPositionVelocity, white);
+        drawSphere(nextPositionVelocity, 0.25f, white);
+        drawLine(aiPosition, turnWorld, yellow);
+        drawSphere(turnWorld, 0.25f, yellow);
     }
 }
 
@@ -251,9 +270,6 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     float steeringAngleRelY = lookAheadDistance * cos(actualAngle);
 
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
-    //Color cc = c;
-    //cc.A = 127;
-    //drawSphere(aiForward, 0.5f, cc);
 
     for (auto i = 0; i < coords.size(); ++i) {
         float distanceAi = Distance(aiPos, coords[i]);
