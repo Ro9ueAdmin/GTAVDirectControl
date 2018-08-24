@@ -23,6 +23,10 @@ Vector3 Cross(Vector3 left, Vector3 right) {
     return result;
 }
 
+float Dot(Vector3 a, Vector3 b) {
+    return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+
 Vector3 operator + (Vector3 left, Vector3 right) {
     return Vector3{
         left.x + right.x,
@@ -81,6 +85,10 @@ Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forwa
     Vector3 right = { x, 0, y, 0, z, 0 };
     Vector3 up = Cross(right, forward);
     return position + (right * offset.x) + (forward * offset.y) + (up * offset.z);
+}
+
+float GetAngleBetween(Vector3 a, Vector3 b) {
+    return acos(Dot(a,b)/(Length(a)*Length(b)));
 }
 
 float GetAngleBetween(float h1, float h2, float separation) {
