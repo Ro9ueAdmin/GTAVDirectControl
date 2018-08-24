@@ -91,9 +91,13 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float lookAheadSteer = constrain(0.8f * ENTITY::GET_ENTITY_SPEED(mVehicle), 10.0f, 9999.0f);
     float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
 
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle);
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake);
+    float cornerRadiusThrottle;
+    float cornerRadiusSteer;
+    float cornerRadiusBrake;
+
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, cornerRadiusThrottle);
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, cornerRadiusSteer);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, cornerRadiusBrake);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -146,6 +150,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     // Decrease throttle when starting to spin out
     // TODO: Also prevents powerslide, need to tweak for balance between grip and yeet
+    // 0.0 min: meh, slow exit
+    // 11.25 deg: Reasonable balance? Might try a cheekier for some exit slides.
+    // No: Fast exit, spinout
     Vector3 nextPositionVelocity = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
 
     Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
@@ -153,7 +160,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
 
-    float spinoutMult = constrain(map(angle, deg2rad(0.0f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
+    float spinoutMult = constrain(map(angle, deg2rad(11.25f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
 
     if (aiSpeed > 5.0f)
         throttle *= spinoutMult;
@@ -164,11 +171,29 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
         float brakeTurn = map(abs(distPerpBrake), 0.0f, 1.0f, 1.0f, 0.0f);
-        if (brakeTurn > maxBrake) {
+        if (brakeTurn > maxBrake)
             maxBrake = brakeTurn;
+        
+    }
+
+    // Slow down when next corner is a tight one
+    // TODO: Consider scaling the corner radius to slow down for by speed
+    // Current: Scales slow-down factor by speed regardless of upcoming corner radius
+    if (cornerRadiusThrottle < 150.0f && cornerRadiusBrake < 150.0f) {
+        //showText(0.45, 0.1, 1.0, "~r~???");
+
+        float avgRadius1 = (cornerRadiusThrottle + cornerRadiusBrake) / 2.0f;
+        float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
+        float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
+        float brakeForRadius = map(avgRadius, 20.0f, 150.0f, 1.0f, 0.0f);
+
+        brakeForRadius *= map(ENTITY::GET_ENTITY_SPEED(mVehicle), 30.0f, 50.0f, 0.0f, 1.0f);
+
+        if (brakeForRadius > maxBrake) {
+            maxBrake = brakeForRadius;
+            //showText(0.45, 0.15, 1.0, "~r~!!!");
         }
-        else {
-        }
+
     }
 
     brake = constrain(maxBrake, 0.0f, 1.0f);
@@ -178,6 +203,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     if (brake > 0.7f)
         throttle = 0.0f;
+
+    if (throttle > 0.95f)
+        throttle = 1.0f;
 
     if (mDebugView) {
         Color red{ 255, 0, 0, 255 };
@@ -254,13 +282,36 @@ Vehicle Racer::GetVehicle() {
     return mVehicle;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance) {
+float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
+    int prev = focus - 1;
+    if (prev < 0) prev = coords.size() - 1;
+
+    int next = (focus + 1) % coords.size();
+
+    float angle = GetAngleBetween(coords[focus]-coords[next], coords[focus]-coords[prev]);
+
+    float length = Distance(coords[prev], coords[focus]);
+    float radius = (0.5f*length) / cos(angle*0.5f);
+
+    //showDebugInfo3D(coords[focus], {   
+    //    fmt("%.03f m length", length),
+    //    fmt("%.03f degrees", rad2deg(angle)),
+    //    fmt("%.03f m radius", radius) 
+    //});
+
+    if (angle < deg2rad(0.1f)) return 9999.0f;
+    if (angle > deg2rad(179.0f)) return 9999.0f;
+    if (radius < 1.0f) return 1.0f;
+    if (radius > 9999.0f) return 9999.0f;
+    if (std::isnan(radius)) return 9999.0f;
+    return radius;
+}
+
+Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float &cornerRadius) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
     int smallestToAiIdx = 0;
-
-    int expectedLaIdx = 0;
 
     float actualAngle = getSteeringAngle();
 
@@ -286,29 +337,32 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
         }
     }
 
+    int returnIndex = smallestToLaIdx;
+
+    // Only consider viable nodes, to not cut the track. 
+    // Significant overshoot still makes AI choose closest track node, 
+    // so prevent this from happening with walls or something. 
     int nodesToConsider = static_cast<int>(1.25f * lookAheadDistance / Distance(coords[0], coords[1]));
 
-    // Ensure start/stop is continuous
-    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
-        return coords[smallestToLaIdx];
-    }
-
-    // Ensure track is followed continuously (no cutting off entire sections)
-    expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
+    // Expected Look-ahead index
+    int expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
     int expectedLaIdxB = (smallestToAiIdx + nodesToConsider);
-    // drawSphere(coords[expectedLaIdx], 0.5f, c);
 
-    if (smallestToLaIdx > expectedLaIdxB) {
-        return coords[expectedLaIdx];
+    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
+        // Ensure start/stop is continuous
+        returnIndex = smallestToLaIdx;
     }
-
-    // Ensure going forwards
-    if (smallestToAiIdx >= smallestToLaIdx) {
-        int nextIdx = (smallestToAiIdx + 10) % coords.size();
-        return coords[nextIdx];
+    else if (smallestToLaIdx > expectedLaIdxB) {
+        // Ensure track is followed continuously (no cutting off entire sections)
+        returnIndex = expectedLaIdx;
     }
-
-    return coords[smallestToLaIdx];
+    else if (smallestToAiIdx >= smallestToLaIdx) {
+        // Ensure going forwards
+        returnIndex = (smallestToAiIdx + 10) % coords.size();
+    }
+    
+    cornerRadius = getCornerRadius(coords, returnIndex);
+    return coords[returnIndex];
 }
 
 float Racer::getSteeringAngle() {

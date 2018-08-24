@@ -19,6 +19,7 @@ public:
 
     void UpdateControl(const std::vector<Vector3> &coords);
     Vehicle GetVehicle();
+    float getCornerRadius(const std::vector<Vector3> &coords, int focus);
     void SetActive(bool value);
     bool GetActive();
     void SetDebugView(bool value);
@@ -26,7 +27,7 @@ public:
 protected:
     void getControls(const std::vector<Vector3> &coords, float limitRadians, bool &handbrake, float &throttle,
                      float &brake, float &steer);
-    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance);
+    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float &radiusAtCorner);
     float getSteeringAngle();
     float calculateReduction();
     float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
