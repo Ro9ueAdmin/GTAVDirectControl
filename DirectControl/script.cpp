@@ -80,7 +80,7 @@ void update(){
         }
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("ddp"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgp"))) {
         if (gPlayerRacer) {
             showNotification("Toggling debug for " + std::to_string(gPlayerRacer->GetVehicle()));
             gPlayerRacer->SetDebugView(!gPlayerRacer->GetDebugView());
@@ -206,14 +206,14 @@ void update(){
         gRacers.clear();
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("ddai0"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgai0"))) {
         showNotification("Disable debug view for racers");
         for (auto& racer : gRacers) {
             racer.SetDebugView(false);
         }
     }
 
-    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("ddai1"))) {
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgai1"))) {
         showNotification("Enable debug view for racers");
         for (auto& racer : gRacers) {
             racer.SetDebugView(true);
