@@ -87,6 +87,37 @@ void update(){
         }
     }
 
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("makeai0"))) {
+        if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+            auto itFound = gRacers.end();
+            for (auto it = gRacers.begin(); it != gRacers.end(); ++it) {
+                if (it->GetVehicle() == vehicle) {
+                    itFound = it;
+                }
+            }
+            if (itFound != gRacers.end()) {
+                gRacers.erase(itFound);
+                showNotification(fmt("Remove AI from %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
+            }
+
+        }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("makeai1"))) {
+        if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+            auto itFound = gRacers.begin();
+            for (auto it = gRacers.begin(); it != gRacers.end(); ++it) {
+                if (it->GetVehicle() == vehicle) {
+                    itFound = it;
+                }
+            }
+            if (itFound == gRacers.end()) {
+                gRacers.emplace_back(vehicle);
+                showNotification(fmt("Adding AI to %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
+            }
+        }
+    }
+
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("addai"))) {
         showNotification("Enter number of AIs to add");
         GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
