@@ -270,14 +270,16 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
         }
     }
 
+    int nodesToConsider = static_cast<int>(1.25f * lookAheadDistance / Distance(coords[0], coords[1]));
+
     // Ensure start/stop is continuous
-    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < coords.size() / 5 && smallestToAiIdx > coords.size() - coords.size() / 5) {
+    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
         return coords[smallestToLaIdx];
     }
 
     // Ensure track is followed continuously (no cutting off entire sections)
-    expectedLaIdx = (smallestToAiIdx + (int)((1.0f * lookAheadDistance) / Distance(coords[0], coords[1]))) % coords.size();
-    int expectedLaIdxB = (smallestToAiIdx + (int)((1.0f * lookAheadDistance) / Distance(coords[0], coords[1])));
+    expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
+    int expectedLaIdxB = (smallestToAiIdx + nodesToConsider);
     // drawSphere(coords[expectedLaIdx], 0.5f, c);
 
     if (smallestToLaIdx > expectedLaIdxB) {
