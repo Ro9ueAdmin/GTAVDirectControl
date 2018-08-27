@@ -284,26 +284,27 @@ Vehicle Racer::GetVehicle() {
 
 float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     int prev = focus - 1;
-    if (prev < 0) prev = coords.size() - 1;
+    if (prev < 0) prev = static_cast<int>(coords.size()) - 1;
 
     int next = (focus + 1) % coords.size();
 
-    float angle = GetAngleBetween(coords[focus]-coords[next], coords[focus]-coords[prev]);
+    float angle = GetAngleBetween(coords[focus] - coords[next], coords[focus] - coords[prev]);
 
     float length = Distance(coords[prev], coords[focus]);
     float radius = (0.5f*length) / cos(angle*0.5f);
 
-    //showDebugInfo3D(coords[focus], {   
+    if (radius <= 0.1f)
+        radius = 0.1f;
+    else if (radius > 1000.0f)
+        radius = 1000.0f;
+    else if (std::isnan(radius))
+        radius = 1000.0f;
+
+    //showDebugInfo3D(coords[focus], {
     //    fmt("%.03f m length", length),
     //    fmt("%.03f degrees", rad2deg(angle)),
-    //    fmt("%.03f m radius", radius) 
+    //    fmt("%.03f m radius", radius)
     //});
-
-    if (angle < deg2rad(0.1f)) return 9999.0f;
-    if (angle > deg2rad(179.0f)) return 9999.0f;
-    if (radius < 1.0f) return 1.0f;
-    if (radius > 9999.0f) return 9999.0f;
-    if (std::isnan(radius)) return 9999.0f;
     return radius;
 }
 
@@ -342,7 +343,7 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     // Only consider viable nodes, to not cut the track. 
     // Significant overshoot still makes AI choose closest track node, 
     // so prevent this from happening with walls or something. 
-    int nodesToConsider = static_cast<int>(1.25f * lookAheadDistance / Distance(coords[0], coords[1]));
+    int nodesToConsider = static_cast<int>(1.25f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx+1)% coords.size()]));
 
     // Expected Look-ahead index
     int expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
