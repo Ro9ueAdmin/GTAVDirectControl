@@ -25,7 +25,7 @@ void PlayerRacer::UpdateControl() {
     float brake = 0.0f;
     float steer = 0.0f;
 
-    getControls(limitRadians, handbrake, throttle, brake, steer);
+    getControls(handbrake, throttle, brake, steer);
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
@@ -44,7 +44,7 @@ void PlayerRacer::UpdateControl() {
     }
 }
 
-void PlayerRacer::getControls(float limitRadians, bool& handbrake, float& throttle, float& brake, float& steer) {
+void PlayerRacer::getControls(bool& handbrake, float& throttle, float& brake, float& steer) {
     mXInput.Update();
     if (mXInput.IsAvailable()) {
         handbrake = mXInput.IsButtonPressed(XInputController::RightShoulder);
@@ -82,10 +82,9 @@ void PlayerRacer::getControls(float limitRadians, bool& handbrake, float& thrott
             throttle = -1.0f;
 
         brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
-        float left = GetAsyncKeyState('J') & 0x8000 ? limitRadians : 0.0f;
-        float right = GetAsyncKeyState('L') & 0x8000 ? limitRadians : 0.0f;
-        steer = left;
-        if (right > 0.5f) steer = -right;
+        float left = GetAsyncKeyState('J') & 0x8000 ? 1.0f : 0.0f;
+        float right = GetAsyncKeyState('L') & 0x8000 ? 1.0f : 0.0f;
+        steer = left - right;
     }
 }
 
