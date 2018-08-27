@@ -84,6 +84,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     if (!mActive)
         return;
 
+    Vector3 aiVelocity = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
 
@@ -118,59 +119,63 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float distanceSteer = Distance(aiPosition, nextPositionSteer);
     float distanceBrake = Distance(aiPosition, nextPositionBrake);
 
-    const float steerMult = 1.33;
-    steer = constrain(turnSteer * steerMult, -limitRadians, limitRadians);
+    float distPerpThrottle = abs((abs(turnThrottle) - 1.5708f) / 1.5708f);
+    float distPerpSteer = abs((abs(turnSteer) - 1.5708f) / 1.5708f);
+    float distPerpBrake = abs((abs(turnBrake) - 1.5708f) / 1.5708f);
 
+    float steerMult = 1.33f;
 
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
-    throttle = constrain(throttle, 0.0f, 1.0f);
+    throttle *= map(distPerpThrottle, 0.0f, 1.0f, 0.5f, 1.0f);
 
-
-    float distPerpThrottle = (abs(turnThrottle) - 1.5708f) / 1.5708f;
-    float distPerpSteer = (abs(turnSteer) - 1.5708f) / 1.5708f;
-    float distPerpBrake = (abs(turnBrake) - 1.5708f) / 1.5708f;
-
-    throttle *= map(abs(distPerpThrottle), 0.0f, 1.0f, 0.5f, 1.0f);
-
-    // Decrease throttle when starting to spin out
-    // TODO: Also prevents powerslide, need to tweak for balance between grip and yeet
-    // 0.0 min: meh, slow exit
-    // 11.25 deg: Reasonable balance? Might try a cheekier for some exit slides.
-    // No: Fast exit, spinout
+    // Decrease throttle when starting to spin out, increase countersteer
     Vector3 nextPositionVelocity = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
-
     Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
     Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(rotationVelocity.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(rotationVelocity.z), 0.0f);
 
     float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
+    float csMult = constrain(map(angle, deg2rad(0.00f), deg2rad(90.0f), 1.0f, 2.0f), 0.0f, 2.0f);
+    float spinoutMult = constrain(map(angle, deg2rad(45.00f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
+    //showText(0.1f, 0.10f, 0.5, fmt("SpinoutMult %.03f", spinoutMult));
+    //showText(0.1f, 0.15f, 0.5, fmt("csMult %.03f", csMult));
 
-    float spinoutMult = constrain(map(angle, deg2rad(11.25f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
+    // start oversteer detect
+    float oversteer = 0.0f;
+    float angleOverSteer = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
+    if (isnan(angleOverSteer))
+        angleOverSteer = 0.0;
 
-    if (aiSpeed > 5.0f)
+    if (angleOverSteer > 10.0f && aiVelocity.y > 1.0f) {
+        oversteer = angleOverSteer / 90.0f;
+    }
+    //showText(0.1f, 0.20f, 0.5, fmt("%sOversteer %.03f", oversteer > 0.1f ? "~g~" : "", angleOverSteer));
+
+    if (aiSpeed > 5.0f) {
         throttle *= spinoutMult;
+        if (oversteer > 0.1f)
+            steerMult *= csMult;
+    }
 
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
 
     float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake * 0.75f, -0.3f, 3.0f);
 
     if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
-        float brakeTurn = map(abs(distPerpBrake), 0.0f, 1.0f, 1.0f, 0.0f);
+        float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
         if (brakeTurn > maxBrake)
             maxBrake = brakeTurn;
-        
     }
 
     // Slow down when next corner is a tight one
     // TODO: Consider scaling the corner radius to slow down for by speed
     // Current: Scales slow-down factor by speed regardless of upcoming corner radius
-    if (cornerRadiusThrottle < 150.0f && cornerRadiusBrake < 150.0f) {
-        //showText(0.45, 0.1, 1.0, "~r~???");
+    float avgRadius1 = (cornerRadiusThrottle + cornerRadiusBrake) / 2.0f;
+    float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
+    float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
 
-        float avgRadius1 = (cornerRadiusThrottle + cornerRadiusBrake) / 2.0f;
-        float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
-        float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
+    if (avgRadius > 0.0f && avgRadius < 150.0f) {
         float brakeForRadius = map(avgRadius, 20.0f, 150.0f, 1.0f, 0.0f);
 
         brakeForRadius *= map(ENTITY::GET_ENTITY_SPEED(mVehicle), 30.0f, 50.0f, 0.0f, 1.0f);
@@ -182,7 +187,10 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     }
 
+    throttle = constrain(throttle, 0.0f, 1.0f);
     brake = constrain(maxBrake, 0.0f, 1.0f);
+    steer = constrain(turnSteer * steerMult, -1.0f, 1.0f);
+    
     if (brake > 0.7f)
         throttle = 0.0f;
 
