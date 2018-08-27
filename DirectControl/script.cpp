@@ -261,9 +261,12 @@ void update(){
 
         json j;
         for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
-            j[fmt("p%05d", idx)]["x"] = gTrackCoords[idx].x;
-            j[fmt("p%05d", idx)]["y"] = gTrackCoords[idx].y;
-            j[fmt("p%05d", idx)]["z"] = gTrackCoords[idx].z;
+            j["Data"]["Route"]["Point"].push_back({
+                { "X", gTrackCoords[idx].x },
+                { "Y", gTrackCoords[idx].y },
+                { "Z", gTrackCoords[idx].z },
+                { "Wide", 5 },
+            });
         }
         std::ofstream o("./DirectControl/" + saveFile + ".json");
         o << std::setw(4) << j << std::endl;
@@ -296,16 +299,28 @@ void update(){
 
         gTrackCoords.clear();
         
-        for (auto p : j) {
+        for (auto& p : j["Data"]["Route"]["Point"]) {
             Vector3 v;
-            v.x = p["x"];
-            v.y = p["y"];
-            v.z = p["z"];
+
+            if (p["X"].is_string()) {
+                v.x = static_cast<float>(std::atof(p["X"].get<std::string>().c_str()));
+                v.y = static_cast<float>(std::atof(p["Y"].get<std::string>().c_str()));
+                v.z = static_cast<float>(std::atof(p["Z"].get<std::string>().c_str()));
+            }
+            else {
+                v.x = p["X"];
+                v.y = p["Y"];
+                v.z = p["Z"];
+            }
 
             gTrackCoords.push_back(v);
         }
-
-        showNotification("~g~Track loaded");
+        float avgDst = 0.0f;
+        for (auto i = 0; i < gTrackCoords.size(); ++i) {
+            avgDst += Distance(gTrackCoords[i], gTrackCoords[(i + 1) % gTrackCoords.size()]);
+        }
+        avgDst /= (float)gTrackCoords.size();
+        showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));
     }
 
     if (gRecording) {
