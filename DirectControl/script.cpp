@@ -105,7 +105,19 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("pp"))) {
         if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
-            PED::SET_PED_INTO_VEHICLE(playerPed, vehicle, -2);
+            if (VEHICLE::GET_VEHICLE_MODEL_NUMBER_OF_SEATS(ENTITY::GET_ENTITY_MODEL(vehicle)) > 1) {
+                if (VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1) == playerPed) {
+                    showNotification("Player to Passenger seat");
+                    PED::SET_PED_INTO_VEHICLE(playerPed, vehicle, -2);
+                }
+                else {                    
+                    showNotification("Player to Driver seat");
+                    PED::SET_PED_INTO_VEHICLE(playerPed, vehicle, -1);
+                }
+            }
+            else {                
+                showNotification("Vehicle has only one seat");
+            }
         }
     }
 
