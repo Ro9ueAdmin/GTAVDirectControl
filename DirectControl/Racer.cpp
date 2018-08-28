@@ -283,8 +283,8 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     float length = Distance(coords[prev], coords[focus]);
     float radius = (0.5f*length) / cos(angle*0.5f);
 
-    if (radius <= 0.1f)
-        radius = 0.1f;
+    if (radius <= 0.0f)
+        radius = 1000.0f;
     else if (radius > 1000.0f)
         radius = 1000.0f;
     else if (std::isnan(radius))
@@ -351,8 +351,15 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
         // Ensure going forwards
         returnIndex = (smallestToAiIdx + 10) % coords.size();
     }
-    
-    cornerRadius = getCornerRadius(coords, returnIndex);
+
+    int nodesForRadius = 6;
+    float averageRadius = 0.0f;
+
+    for (int i = 0; i < nodesForRadius; ++i) {
+        averageRadius += getCornerRadius(coords, (returnIndex + i) % coords.size());
+    }
+
+    cornerRadius = averageRadius / static_cast<float>(nodesForRadius);
     return coords[returnIndex];
 }
 
