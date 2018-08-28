@@ -134,3 +134,12 @@ void drawChevron(Vector3 pos, Vector3 dir, Vector3 rot, float scale, float arrow
         c.R, c.G, c.B, c.A,
         false, false, 2, false, nullptr, nullptr, false);
 }
+
+std::string getGxtName(Hash hash) {
+    char *name = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(hash);
+    std::string displayName = UI::_GET_LABEL_TEXT(name);
+    if (displayName == "NULL") {
+        displayName = name;
+    }
+    return displayName;
+}

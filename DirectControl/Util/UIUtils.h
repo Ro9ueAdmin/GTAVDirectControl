@@ -14,3 +14,4 @@ void showSubtitle(const std::string &message, int duration = 2500);
 void drawLine(Vector3 a, Vector3 b, Color c);
 void drawSphere(Vector3 p, float scale, Color c);
 void drawChevron(Vector3 pos, Vector3 dir, Vector3 rot, float scale, float arrow, Color c);
+std::string getGxtName(Hash hash);

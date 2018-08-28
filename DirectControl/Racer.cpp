@@ -13,7 +13,7 @@ Racer::Racer(Vehicle vehicle) :
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-    mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
 }
 
@@ -24,7 +24,7 @@ Racer::Racer(Racer &&other) noexcept :
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-    mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
     other.mVehicle = 0;
 }
@@ -34,7 +34,7 @@ Racer & Racer::operator=(Racer &&other) noexcept {
         mVehicle = other.mVehicle;
         mBlip = std::make_unique<BlipX>(mVehicle);
         mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-        mBlip->SetName(fmt("AI Racer %s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+        mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
         mBlip->SetColor(BlipColorYellow);
         other.mVehicle = 0;
     }
@@ -50,8 +50,8 @@ Racer::~Racer() {
         ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
         ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
     }
-    mBlip->Delete();
     if (mBlip) {
+        mBlip->Delete();
         mBlip.reset(nullptr);
     }
 }
