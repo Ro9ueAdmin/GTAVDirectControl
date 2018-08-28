@@ -18,6 +18,7 @@
 using json = nlohmann::json;
 
 bool gRecording = false;
+bool gDrawTrack = true;
 
 std::vector<Vector3> gTrackCoords;
 std::vector<Racer> gRacers;
@@ -73,12 +74,14 @@ void UpdateAI(){
         }
     }
 
-    for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
-        auto coord = gTrackCoords[idx];
-        float screenX, screenY;
-        bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
-        if (visible && idx != gTrackCoords.size() - 1) {
-            drawLine(coord, gTrackCoords[idx + 1], { 255, 255, 0, 255 });
+    if (gDrawTrack && !gRecording) {
+        for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
+            auto coord = gTrackCoords[idx];
+            float screenX, screenY;
+            bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
+            if (visible && idx != gTrackCoords.size() - 1) {
+                drawLine(coord, gTrackCoords[idx + 1], { 255, 255, 0, 255 });
+            }
         }
     }
 }
@@ -363,6 +366,10 @@ void UpdateCheats() {
         avgDst /= (float)gTrackCoords.size();
         showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));
     }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("drawtrack"))) {
+        gDrawTrack = !gDrawTrack;
+    }
 }
 
 void main() {
@@ -371,7 +378,7 @@ void main() {
     logger.Write(INFO, "\"cc\" to take control of a non-controlled car");
     logger.Write(INFO, "\"cc\" to release control of a controlled car");
     logger.Write(INFO, "\"pp\" to switch to passenger seat ");
-    logger.Write(INFO, "\"ddp\" to toggle debug lines");
+    logger.Write(INFO, "\"dbgp\" to toggle debug lines");
     logger.Write(INFO, "Direct Control Controls:");
     logger.Write(INFO, "IJKL as WASD, U is reverse, O is handbrake");
     logger.Write(INFO, "Gamepad #2 for analog input. Hold LB to reverse with throttle.");
@@ -382,8 +389,8 @@ void main() {
     logger.Write(INFO, "\"startai\" to make AI follow current track (default is already started)");
     logger.Write(INFO, "\"stopai\" to make AI stop following track");
     logger.Write(INFO, "\"fixai\" to fix all AI cars");
-    logger.Write(INFO, "\"ddai0\" to disable debug lines");
-    logger.Write(INFO, "\"ddai1\" to enable debug lines");
+    logger.Write(INFO, "\"dbgai0\" to disable debug lines");
+    logger.Write(INFO, "\"dbgai1\" to enable debug lines");
     logger.Write(INFO, "--------------------------------------------------------------------------------");
     logger.Write(INFO, "Track Cheats:");
     logger.Write(INFO, "\"startrecord\" to start recording current location. 1m interval");
@@ -391,6 +398,7 @@ void main() {
     logger.Write(INFO, "\"loadtrack\" to load track from file (json)");
     logger.Write(INFO, "\"savetrack\" to save current track to file (json)");
     logger.Write(INFO, "\"cleartrack\" to clear all points on current track");
+    logger.Write(INFO, "\"drawtrack\" to toggle track drawing");
     logger.Write(INFO, "");
 
     gExt.initOffsets();
