@@ -6,6 +6,24 @@
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
 
+std::vector<Hash> headLightsOnWeathers = {
+//    0x97AA0A79, // EXTRASUNNY
+//    0x36A83D84, // CLEAR
+//    0x30FDAF5C, // CLOUDS
+//    0x10DCF4B5, // SMOG
+    0xAE737644, // FOGGY
+    0xBB898D2D, // OVERCAST
+    0x54A69840, // RAIN
+    0xB677829F, // THUNDER
+    0x6DB1A50D, // CLEARING
+//    0xA4CA1326, // NEUTRAL
+    0xEFB6EFF6, // SNOW
+    0x27EA2814, // BLIZZARD
+    0x23FB812B, // SNOWLIGHT
+    0xAAC9C895, // XMAS
+    0xC91A3202, // HALLOWEEN
+};
+
 Racer::Racer(Vehicle vehicle) :
     mVehicle(vehicle),
     mActive(true),
@@ -293,6 +311,11 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 void Racer::UpdateControl(const std::vector<Vector3> &coords) {
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
+
+    bool headlightsOn = false;
+    headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
+    headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
+    VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 
     float actualAngle = getSteeringAngle();
     float limitRadians = gExt.GetMaxSteeringAngle(mVehicle);
