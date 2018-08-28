@@ -90,7 +90,7 @@ bool Racer::GetDebugView() {
     return mDebugView;
 }
 
-void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, bool & handbrake, float & throttle, float & brake, float & steer) {
+void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, float actualAngle, bool & handbrake, float & throttle, float & brake, float & steer) {
     handbrake = false;
     throttle = 0.0f;
     brake = 1.0f;
@@ -114,9 +114,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float cornerRadiusSteer;
     float cornerRadiusBrake;
 
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, cornerRadiusThrottle);
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, cornerRadiusSteer);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, cornerRadiusBrake);
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, cornerRadiusThrottle);
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, cornerRadiusSteer);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, cornerRadiusBrake);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -193,8 +193,8 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     bool dbgBrakeHeading = false;
     float brakeDiffThrottleBrake = 0.0f;
     float realAngle = getSteeringAngle();
-    if (abs(diffNodeHeading) - abs(realAngle) > deg2rad(30.0f) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
-        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(realAngle) - deg2rad(30.0f), 0.0f, deg2rad(22.5f), 0.0f, 1.0f);
+    if (abs(diffNodeHeading) - abs(actualAngle) > deg2rad(30.0f) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
+        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(30.0f), 0.0f, deg2rad(22.5f), 0.0f, 1.0f);
         brakeDiffThrottleBrake *= constrain(map(aiSpeed, 20.0f, 40.0f, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
@@ -282,9 +282,10 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &min, &max);
         Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 1.0f);
 
-        float actualAngle = getSteeringAngle() - deg2rad(90.0f);
-        float steeringAngleRelX = -sin(actualAngle);
-        float steeringAngleRelY = cos(actualAngle);
+        // ActualAngle - 90deg to rotate the chevron
+        float debugAngle = actualAngle - deg2rad(90.0f);
+        float steeringAngleRelX = -sin(debugAngle);
+        float steeringAngleRelY = cos(debugAngle);
 
         Vector3 forward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
         Vector3 dir = forward - p;
@@ -326,7 +327,7 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords) {
     float brake = 0.0f;
     float steer = 0.0f;
 
-    getControls(coords, limitRadians, handbrake, throttle, brake, steer);
+    getControls(coords, limitRadians, actualAngle, handbrake, throttle, brake, steer);
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
@@ -371,13 +372,11 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     return radius;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float &cornerRadius) {
+Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, float &cornerRadius) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
     int smallestToAiIdx = 0;
-
-    float actualAngle = getSteeringAngle();
 
     Vector3 aiPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, 0.0f);
 

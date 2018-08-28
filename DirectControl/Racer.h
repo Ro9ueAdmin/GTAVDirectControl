@@ -25,9 +25,9 @@ public:
     void SetDebugView(bool value);
     bool GetDebugView();
 protected:
-    void getControls(const std::vector<Vector3> &coords, float limitRadians, bool &handbrake, float &throttle,
-                     float &brake, float &steer);
-    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float &radiusAtCorner);
+    void getControls(const std::vector<Vector3> &coords, float limitRadians, float actualAngle, bool &handbrake,
+                     float &throttle, float &brake, float &steer);
+    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float actualAngle, float &radiusAtCorner);
     float getSteeringAngle();
     float calculateReduction();
     float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
