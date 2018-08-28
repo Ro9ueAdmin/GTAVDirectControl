@@ -21,6 +21,7 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
         logger.Write(INFO, "Game version " + eGameVersionToString(getGameVersion()));
         logger.Write(INFO, "");
         scriptRegister(hInstance, ScriptMain);
+        scriptRegisterAdditionalThread(hInstance, CheatMain);
         break;
     }
     case DLL_PROCESS_DETACH: {

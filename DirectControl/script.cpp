@@ -54,7 +54,36 @@ Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bo
     return copy;
 }
 
-void update(){
+void UpdateAI(){
+    Ped playerPed = PLAYER::PLAYER_PED_ID();
+
+    if (gPlayerRacer != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerRacer->GetVehicle(), -1) != playerPed) {
+        gPlayerRacer->UpdateControl();
+    }
+
+    for (auto& racer : gRacers) {
+        racer.UpdateControl(gTrackCoords);
+    }
+
+    if (gRecording) {
+        Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
+        float mySpeed = ENTITY::GET_ENTITY_SPEED(playerPed);
+        if (Distance(gTrackCoords.back(), myCoords) > 1.0f/*constrain(map(mySpeed, 1.0f, 20.0f, 1.0f, 2.0f), 0.5f, 20.0f)*/) {
+            gTrackCoords.push_back(myCoords);
+        }
+    }
+
+    for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
+        auto coord = gTrackCoords[idx];
+        float screenX, screenY;
+        bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
+        if (visible && idx != gTrackCoords.size() - 1) {
+            drawLine(coord, gTrackCoords[idx + 1], { 255, 255, 0, 255 });
+        }
+    }
+}
+
+void UpdateCheats() {
     Ped playerPed = PLAYER::PLAYER_PED_ID();
     Vehicle vehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 
@@ -159,7 +188,7 @@ void update(){
         std::string racerModelName = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
         if (racerModelName.empty())
             racerModelName = "kuruma";
-        
+
         Hash model = GAMEPLAY::GET_HASH_KEY((char*)racerModelName.c_str());
         if (!STREAMING::IS_MODEL_IN_CDIMAGE(model)) {
             showNotification("Model not valid: Cancelling AI Spawn");
@@ -245,7 +274,7 @@ void update(){
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cleartrack"))) {
         gTrackCoords.clear();
-        gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true)); 
+        gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
         gRecording = false;
         showNotification("~r~Record cleared");
     }
@@ -266,7 +295,7 @@ void update(){
                 { "Y", gTrackCoords[idx].y },
                 { "Z", gTrackCoords[idx].z },
                 { "Wide", 5 },
-            });
+                });
         }
         std::ofstream o("./DirectControl/" + saveFile + ".json");
         o << std::setw(4) << j << std::endl;
@@ -298,7 +327,7 @@ void update(){
         i >> j;
 
         gTrackCoords.clear();
-        
+
         for (auto& p : j["Data"]["Route"]["Point"]) {
             Vector3 v;
 
@@ -321,31 +350,6 @@ void update(){
         }
         avgDst /= (float)gTrackCoords.size();
         showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));
-    }
-
-    if (gRecording) {
-        Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
-        float mySpeed = ENTITY::GET_ENTITY_SPEED(playerPed);
-        if (Distance(gTrackCoords.back(), myCoords) > 1.0f/*constrain(map(mySpeed, 1.0f, 20.0f, 1.0f, 2.0f), 0.5f, 20.0f)*/) {
-            gTrackCoords.push_back(myCoords);
-        }
-    }
-
-    for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
-        auto coord = gTrackCoords[idx];
-        float screenX, screenY;
-        bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
-        if (visible && idx != gTrackCoords.size() - 1) {
-            drawLine(coord, gTrackCoords[idx + 1], { 255, 255, 0, 255 });
-        }
-    }
-
-    if (gPlayerRacer != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerRacer->GetVehicle(), -1) != playerPed) {
-        gPlayerRacer->UpdateControl();
-    }
-
-    for (auto& racer : gRacers) {
-        racer.UpdateControl(gTrackCoords);
     }
 }
 
@@ -380,12 +384,21 @@ void main() {
     gExt.initOffsets();
 
     while (true) {
-		update();
-		WAIT(0);
-	}
+        UpdateAI();
+        WAIT(0);
+    }
 }
 
 void ScriptMain() {
 	srand(GetTickCount());
 	main();
+}
+
+void CheatMain() {
+    srand(GetTickCount());
+
+    while(true) {
+        UpdateCheats();
+        WAIT(0);
+    }
 }
