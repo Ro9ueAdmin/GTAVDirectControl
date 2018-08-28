@@ -89,7 +89,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
 
     float lookAheadThrottle = constrain(3.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
-    float lookAheadSteer = constrain(0.8f * ENTITY::GET_ENTITY_SPEED(mVehicle), 10.0f, 9999.0f);
+    float lookAheadSteer = constrain(1.8f * ENTITY::GET_ENTITY_SPEED(mVehicle), 10.0f, 9999.0f);
     float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
 
     float cornerRadiusThrottle;
@@ -110,6 +110,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float nextHeadingThrottle = atan2(nextVectorThrottle.y, nextVectorThrottle.x);
     float nextHeadingSteer = atan2(nextVectorSteer.y, nextVectorSteer.x);
     float nextHeadingBrake = atan2(nextVectorBrake.y, nextVectorBrake.x);
+
+    float throttleBrakeHeading(atan2(nextPositionThrottle.y - nextPositionBrake.y, nextPositionThrottle.x - nextPositionBrake.x));
+    float diffNodeHeading = atan2(sin(throttleBrakeHeading - aiHeading), cos(throttleBrakeHeading - aiHeading));
 
     float turnThrottle = atan2(sin(nextHeadingThrottle - aiHeading), cos(nextHeadingThrottle - aiHeading));
     float turnSteer = atan2(sin(nextHeadingSteer - aiHeading), cos(nextHeadingSteer - aiHeading));
@@ -152,20 +155,42 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     }
     //showText(0.1f, 0.20f, 0.5, fmt("%sOversteer %.03f", oversteer > 0.1f ? "~g~" : "", angleOverSteer));
 
+    bool dbgThrottleSpinout = false;
+    bool dbgCountersteer = false;
     if (aiSpeed > 5.0f) {
-        throttle *= spinoutMult;
-        if (oversteer > 0.1f)
+        if (oversteer > 0.1f) {
+            throttle *= spinoutMult;
+            dbgThrottleSpinout = spinoutMult < 1.0f;
             steerMult *= csMult;
+            dbgCountersteer = csMult > 1.0f;
+        }
     }
 
+    bool dbgHandbrake = false;
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
+    dbgHandbrake = handbrake;
 
     float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake * 0.75f, -0.3f, 3.0f);
 
+    bool dbgBrakeHeading = false;
+    float brakeDiffThrottleBrake = 0.0f;
+    float realAngle = getSteeringAngle();
+    if (abs(diffNodeHeading) - abs(realAngle) > deg2rad(30.0f) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
+        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(realAngle) - deg2rad(30.0f), 0.0f, deg2rad(22.5f), 0.0f, 1.0f);
+        brakeDiffThrottleBrake *= constrain(map(aiSpeed, 20.0f, 40.0f, 0.0f, 1.0f), 0.0f, 1.0f);
+        if (brakeDiffThrottleBrake > maxBrake) {
+            maxBrake = brakeDiffThrottleBrake;
+            dbgBrakeHeading = true;
+        }
+    }
+
+    bool dbgBrakeAngle = false;
     if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
         float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
-        if (brakeTurn > maxBrake)
+        if (brakeTurn > maxBrake) {
             maxBrake = brakeTurn;
+            dbgBrakeAngle = true;
+        }
     }
 
     // Slow down when next corner is a tight one
@@ -175,16 +200,17 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
     float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
 
-    if (avgRadius > 0.0f && avgRadius < 150.0f) {
-        float brakeForRadius = map(avgRadius, 20.0f, 150.0f, 1.0f, 0.0f);
+    bool dbgBrakeRadius = false;
 
-        brakeForRadius *= map(ENTITY::GET_ENTITY_SPEED(mVehicle), 30.0f, 50.0f, 0.0f, 1.0f);
+    float radiusToConsider = map(ENTITY::GET_ENTITY_SPEED(mVehicle) / 3.6f, 0.0f, 100.0f, 0.0f, 1000.0f);
+    float radiusBrakeMult = 1.0f;
+    if (avgRadius > 0.0f && avgRadius < radiusToConsider) {
+        /*float*/ radiusBrakeMult = map(avgRadius, 0.0f, radiusToConsider, 1.0f, 0.0f);
 
-        if (brakeForRadius > maxBrake) {
-            maxBrake = brakeForRadius;
-            //showText(0.45, 0.15, 1.0, "~r~!!!");
+        if (radiusBrakeMult > maxBrake) {
+            maxBrake = radiusBrakeMult;
+            dbgBrakeRadius = true;
         }
-
     }
 
     throttle = constrain(throttle, 0.0f, 1.0f);
@@ -196,6 +222,30 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
     if (throttle > 0.95f)
         throttle = 1.0f;
+
+    //showText(0.1f, 0.100f, 0.5f, fmt("lim: %.03f deg", rad2deg(limitRadians)));
+    //showText(0.1f, 0.125f, 0.5f, fmt("turnT: %.03f deg", rad2deg(turnThrottle)));
+    //showText(0.1f, 0.150f, 0.5f, fmt("turnB: %.03f deg", rad2deg(turnBrake)));
+    //showText(0.1f, 0.175f, 0.5f, fmt("turnS: %.03f deg", rad2deg(turnSteer)));
+    //showText(0.1f, 0.200f, 0.5f, fmt("diffNodeHeading: %.03f deg", rad2deg(diffNodeHeading)));
+
+    //showText(0.25f, 0.125f, 0.5f, fmt("T: %.03f", throttle));
+    //showText(0.25f, 0.150f, 0.5f, fmt("B: %.03f", brake));
+    //showText(0.25f, 0.175f, 0.5f, fmt("S: %.03f deg", rad2deg(steer)));
+
+    //showText(0.50f, 0.100f, 0.5f, fmt("averageRadius: %.03f", avgRadius));
+    //showText(0.50f, 0.125f, 0.5f, fmt("RadiusConsider: %.03f", radiusToConsider));
+    //showText(0.50f, 0.150f, 0.5f, fmt("radiusBrakeMul: %.03f", radiusBrakeMult));
+    //showText(0.50f, 0.175f, 0.5f, fmt("headingBrakeMul: %.03f", brakeDiffThrottleBrake));
+
+
+    //showText(0.75f, 0.100f, 0.5f, fmt("%sThrottleSpinout", dbgThrottleSpinout ? "~r~" : "~w~"));
+    //showText(0.75f, 0.125f, 0.5f, fmt("%sCountersteer++", dbgCountersteer ? "~r~" : "~w~"));
+    //showText(0.75f, 0.150f, 0.5f, fmt("%sBrake4Angle", dbgBrakeAngle ? "~r~" : "~w~"));
+    //showText(0.75f, 0.175f, 0.5f, fmt("%sBrake4Radius", dbgBrakeRadius ? "~r~" : "~w~"));
+    //showText(0.75f, 0.200f, 0.5f, fmt("%sBrake4Heading", dbgBrakeHeading ? "~r~" : "~w~"));
+    //showText(0.75f, 0.225f, 0.5f, fmt("%sHandbrake", dbgHandbrake ? "~r~" : "~w~"));
+
 
     if (mDebugView) {
         Color red{ 255, 0, 0, 255 };
