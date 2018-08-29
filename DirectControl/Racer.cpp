@@ -236,8 +236,11 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         Color yellow{ 255, 255, 0, 255 };
 
         drawLine(aiPosition, nextPositionThrottle, green);
+        drawSphere(nextPositionThrottle, 0.25f, green);
         drawLine(aiPosition, nextPositionSteer, blue);
+        drawSphere(nextPositionSteer, 0.25f, blue);
         drawLine(aiPosition, nextPositionBrake, red);
+        drawSphere(nextPositionBrake, 0.25f, red);
 
         // draw chevron
         Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
@@ -377,25 +380,28 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     // Only consider viable nodes, to not cut the track. 
     // Significant overshoot still makes AI choose closest track node, 
     // so prevent this from happening with walls or something. 
-    int nodesToConsider = static_cast<int>(1.25f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx+1)% coords.size()]));
+    int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
+    int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
 
     // Expected Look-ahead index
-    int expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
-    int expectedLaIdxB = (smallestToAiIdx + nodesToConsider);
+    //int expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
+    //int expectedLaIdxB = (smallestToAiIdx + nodesToConsider);
 
-    if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
-        // Ensure start/stop is continuous
-        returnIndex = smallestToLaIdx;
-        source = "start/stop";
-    }
-    else if (smallestToLaIdx > expectedLaIdxB) {
+    //if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
+    //    // Ensure start/stop is continuous
+    //    returnIndex = smallestToLaIdx;
+    //    source = "start/stop";
+    //}
+    //else 
+    if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
-        returnIndex = expectedLaIdx;
+        returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
         source = "continuous";
     }
-    else if (smallestToAiIdx >= smallestToLaIdx) {
+    else 
+    if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
         // Ensure going forwards
-        returnIndex = (smallestToAiIdx + 10) % coords.size();
+        returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
         source = "forwards";
     }
 
