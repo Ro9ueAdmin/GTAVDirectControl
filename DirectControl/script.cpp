@@ -14,11 +14,11 @@
 #include "Util/StringFormat.h"
 #include "Racer.h"
 #include "PlayerRacer.h"
+#include "Settings.h"
 
 using json = nlohmann::json;
 
 bool gRecording = false;
-bool gDrawTrack = true;
 
 std::vector<Vector3> gTrackCoords;
 std::vector<Racer> gRacers;
@@ -74,7 +74,7 @@ void UpdateAI(){
         }
     }
 
-    if (gDrawTrack && !gRecording) {
+    if (gSettings.TrackShowDebug || gRecording) {
         for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
             auto coord = gTrackCoords[idx];
             float screenX, screenY;
@@ -368,7 +368,12 @@ void UpdateCheats() {
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("drawtrack"))) {
-        gDrawTrack = !gDrawTrack;
+        gSettings.TrackShowDebug = !gSettings.TrackShowDebug;
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("reloadsettings"))) {
+        gSettings.ReadSettings("./DirectControl/settings.ini");
+        showNotification("Reloaded settings");
     }
 }
 
@@ -400,6 +405,9 @@ void main() {
     gLogger.Write(INFO, "\"cleartrack\" to clear all points on current track");
     gLogger.Write(INFO, "\"drawtrack\" to toggle track drawing");
     gLogger.Write(INFO, "");
+
+    gSettings.WriteDefaults("./DirectControl/defaults.ini");
+    gSettings.ReadSettings("./DirectControl/settings.ini");
 
     gExt.initOffsets();
 
