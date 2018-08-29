@@ -33,4 +33,4 @@ private:
     };
 };
 
-extern Logger logger;
+extern Logger gLogger;

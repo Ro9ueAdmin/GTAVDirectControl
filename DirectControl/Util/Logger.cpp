@@ -50,4 +50,4 @@ std::string Logger::levelText(LogLevel level) const {
 }
 
 // Everything's gonna use this instance.
-Logger logger;
+Logger gLogger;
