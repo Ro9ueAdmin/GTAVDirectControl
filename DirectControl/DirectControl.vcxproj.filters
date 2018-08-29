@@ -3,9 +3,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="script.cpp" />
-    <ClCompile Include="Util\Logger.cpp">
-      <Filter>Util</Filter>
-    </ClCompile>
     <ClCompile Include="Util\MathExt.cpp">
       <Filter>Util</Filter>
     </ClCompile>
@@ -30,12 +27,13 @@
     </ClCompile>
     <ClCompile Include="Racer.cpp" />
     <ClCompile Include="PlayerRacer.cpp" />
+    <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Util\Logger.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="script.h" />
-    <ClInclude Include="Util\Logger.hpp">
-      <Filter>Util</Filter>
-    </ClInclude>
     <ClInclude Include="Util\MathExt.h">
       <Filter>Util</Filter>
     </ClInclude>
@@ -76,6 +74,10 @@
       <Filter>ScriptHookV</Filter>
     </ClInclude>
     <ClInclude Include="PlayerRacer.h" />
+    <ClInclude Include="Settings.h" />
+    <ClInclude Include="Util\Logger.hpp">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">

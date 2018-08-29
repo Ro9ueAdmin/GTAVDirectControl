@@ -5,6 +5,7 @@
 #include "Util/Color.h"
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
+#include "Settings.h"
 
 std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -26,8 +27,8 @@ std::vector<Hash> headLightsOnWeathers = {
 
 Racer::Racer(Vehicle vehicle) :
     mVehicle(vehicle),
-    mActive(true),
-    mDebugView(true) {
+    mActive(gSettings.AIDefaultActive),
+    mDebugView(gSettings.AIShowDebug) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -106,9 +107,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
 
-    float lookAheadThrottle = constrain(3.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
-    float lookAheadSteer = constrain(1.8f * ENTITY::GET_ENTITY_SPEED(mVehicle), 10.0f, 9999.0f);
-    float lookAheadBrake = constrain(2.5f * ENTITY::GET_ENTITY_SPEED(mVehicle), 15.0f, 9999.0f);
+    float lookAheadThrottle = constrain(gSettings.AILookaheadThrottleSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadThrottleMinDistance, 9999.0f);
+    float lookAheadSteer = constrain(gSettings.AILookaheadSteerSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadSteerMinDistance, 9999.0f);
+    float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     float cornerRadiusThrottle;
     float cornerRadiusSteer;
@@ -142,7 +143,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float distPerpThrottle = abs((abs(turnThrottle) - 1.5708f) / 1.5708f);
     float distPerpBrake = abs((abs(turnBrake) - 1.5708f) / 1.5708f);
 
-    float steerMult = 1.33f;
+    float steerMult = gSettings.AISteerMult;
 
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
@@ -155,34 +156,27 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(rotationVelocity.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(rotationVelocity.z), 0.0f);
 
     float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
-    float csMult = constrain(map(angle, deg2rad(0.00f), deg2rad(90.0f), 1.0f, 2.0f), 0.0f, 2.0f);
-    float spinoutMult = constrain(map(angle, deg2rad(45.00f), deg2rad(90.0f), 1.0f, 0.0f), 0.0f, 1.0f);
+    float csMult = constrain(map(angle, deg2rad(gSettings.AICountersteerIncreaseStartAngle), deg2rad(gSettings.AICountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
+    float spinoutMult = constrain(map(angle, deg2rad(gSettings.AIThrottleDecreaseStartAngle), deg2rad(gSettings.AIThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
 
     // start oversteer detect
-    float oversteer = 0.0f;
     float angleOverSteer = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
     if (isnan(angleOverSteer))
         angleOverSteer = 0.0;
 
-    if (angleOverSteer > 10.0f && aiVelocity.y > 1.0f) {
-        oversteer = angleOverSteer / 90.0f;
-    }
-
-    if (aiSpeed > 5.0f) {
-        if (oversteer > 0.1f) {
-            throttle *= spinoutMult;
-            steerMult *= csMult;
-        }
+    if (angleOverSteer > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
+        throttle *= spinoutMult;
+        steerMult *= csMult;
     }
 
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
 
-    float maxBrake = map(aiSpeed, distanceThrottle * 0.50f, distanceBrake * 0.75f, -0.3f, 3.0f);
+    float maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
-    if (abs(diffNodeHeading) - abs(actualAngle) > deg2rad(30.0f) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
-        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(30.0f), 0.0f, deg2rad(22.5f), 0.0f, 1.0f);
-        brakeDiffThrottleBrake *= constrain(map(aiSpeed, 20.0f, 40.0f, 0.0f, 1.0f), 0.0f, 1.0f);
+    if (abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
+        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(gSettings.AIBrakePointHeadingMinAngle), 0.0f, deg2rad(gSettings.AIBrakePointHeadingMaxAngle - gSettings.AIBrakePointHeadingMinAngle), 0.0f, 1.0f);
+        brakeDiffThrottleBrake *= constrain(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
         }
@@ -195,15 +189,12 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         }
     }
 
-    // Slow down when next corner is a tight one
-    // TODO: Consider scaling the corner radius to slow down for by speed
-    // Current: Scales slow-down factor by speed regardless of upcoming corner radius
     float avgRadius1 = (cornerRadiusThrottle + cornerRadiusBrake) / 2.0f;
     float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
     float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
 
 
-    float radiusToConsider = map(ENTITY::GET_ENTITY_SPEED(mVehicle) / 3.6f, 0.0f, 100.0f, 0.0f, 1000.0f);
+    float radiusToConsider = map(ENTITY::GET_ENTITY_SPEED(mVehicle) / 3.6f, 0.0f, gSettings.AIBrakePointRadiusMaxSpeed, 0.0f, gSettings.AIBrakePointRadiusMaxRadius);
     if (avgRadius > 0.0f && avgRadius < radiusToConsider) {
         float radiusBrakeMult = map(avgRadius, 0.0f, radiusToConsider, 1.0f, 0.0f);
 
