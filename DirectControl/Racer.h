@@ -27,7 +27,7 @@ public:
 protected:
     void getControls(const std::vector<Vector3> &coords, float limitRadians, float actualAngle, bool &handbrake,
                      float &throttle, float &brake, float &steer);
-    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float actualAngle, float &radiusAtCorner);
+    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float actualAngle, float &radiusAtCorner, std::string &source);
     float getSteeringAngle();
     float calculateReduction();
     float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,

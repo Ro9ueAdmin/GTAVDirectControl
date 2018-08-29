@@ -103,6 +103,12 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     if (!mActive)
         return;
 
+    bool dbgSpinThrottle = false;
+    bool dbgSpinCountersteer = false;
+    bool dbgBrakeForAngle = false;
+    bool dbgBrakeForRadius = false;
+    bool dbgBrakeForHeading = false;
+
     Vector3 aiVelocity = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
@@ -115,9 +121,13 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float cornerRadiusSteer;
     float cornerRadiusBrake;
 
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, cornerRadiusThrottle);
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, cornerRadiusSteer);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, cornerRadiusBrake);
+    std::string npTSrc;
+    std::string npBSrc;
+    std::string npSSrc;
+    
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, cornerRadiusThrottle, npTSrc);
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, cornerRadiusSteer, npSSrc);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, cornerRadiusBrake, npBSrc);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -167,6 +177,8 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     if (angleOverSteer > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
         throttle *= spinoutMult;
         steerMult *= csMult;
+        dbgSpinThrottle = spinoutMult < 1.0f;
+        dbgSpinCountersteer = steerMult > 1.0f;
     }
 
     handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
@@ -179,6 +191,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         brakeDiffThrottleBrake *= constrain(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
+            dbgBrakeForHeading = true;
         }
     }
 
@@ -186,6 +199,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
         if (brakeTurn > maxBrake) {
             maxBrake = brakeTurn;
+            dbgBrakeForAngle = true;
         }
     }
 
@@ -200,6 +214,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 
         if (radiusBrakeMult > maxBrake) {
             maxBrake = radiusBrakeMult;
+            dbgBrakeForRadius = true;
         }
     }
 
@@ -241,8 +256,8 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         rot.y = 90.0f;
 
         Color c{
-            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 127.0f, 255.0f)), 0, 255),
-            constrain(static_cast<int>(map(brake, 1.0f, 0.0f, 127.0f, 255.0f)), 0, 255),
+            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 127.0f, 255.0f)), 127, 255),
+            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 127.0f)), 127, 255),
             0,
             255
         };
@@ -254,6 +269,19 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         drawSphere(nextPositionVelocity, 0.25f, white);
         drawLine(aiPosition, turnWorld, yellow);
         drawSphere(turnWorld, 0.25f, yellow);
+
+        // Debug text
+        Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
+        showDebugInfo3D(up2, 10.0f, {
+            fmt("%sSpinThrottle--", dbgSpinThrottle ? "~r~" : "~w~"),
+            fmt("%sSpinSteer++", dbgSpinCountersteer ? "~r~" : "~w~"),
+            fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
+            fmt("%sBrake4Radius", dbgBrakeForRadius ? "~r~" : "~w~"),
+            fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
+            fmt("LAThrottle: %s", npTSrc.c_str()),
+            fmt("LABrake: %s", npBSrc.c_str()),
+            fmt("LASteer: %s", npSSrc.c_str()),
+        });
     }
 }
 
@@ -315,7 +343,7 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     return radius;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, float &cornerRadius) {
+Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, float &cornerRadius, std::string &source) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
@@ -344,6 +372,7 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     }
 
     int returnIndex = smallestToLaIdx;
+    source = "normal";
 
     // Only consider viable nodes, to not cut the track. 
     // Significant overshoot still makes AI choose closest track node, 
@@ -357,14 +386,17 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
         // Ensure start/stop is continuous
         returnIndex = smallestToLaIdx;
+        source = "start/stop";
     }
     else if (smallestToLaIdx > expectedLaIdxB) {
         // Ensure track is followed continuously (no cutting off entire sections)
         returnIndex = expectedLaIdx;
+        source = "continuous";
     }
     else if (smallestToAiIdx >= smallestToLaIdx) {
         // Ensure going forwards
         returnIndex = (smallestToAiIdx + 10) % coords.size();
+        source = "forwards";
     }
 
     int nodesForRadius = 6;

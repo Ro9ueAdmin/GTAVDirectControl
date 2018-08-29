@@ -106,7 +106,7 @@ void Settings::WriteDefaults(const char *file) {
         "; Show the AI thinking lines by default.\n"
         "; Red: Braking, Green: Throttle, Blue: Steering\n"
         "; White: Physics heading without rotation\n"
-        "; Yellow: Physics heading with rotation\n");
+        "; Yellow: Physics heading with rotation");
     ini.SetBoolValue(debugSection, "AIDefaultActive", AIDefaultActive, 
         "; Enable AI driving by default, after spawning");
     
