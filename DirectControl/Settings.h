@@ -11,6 +11,7 @@ public:
 
     bool TrackShowDebug;                        // to default show track line
     bool AIShowDebug;                           // to default spawn AI with debug info
+    bool AIShowDebugText;                       // enables debug text if debug normal is enabled
     bool AIDefaultActive;                       // to default spawn AI with AI active
 
     float AILookaheadThrottleSpeedMult;         // m/s meters lookahead multiplier

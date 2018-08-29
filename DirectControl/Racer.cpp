@@ -274,17 +274,19 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         drawSphere(turnWorld, 0.25f, yellow);
 
         // Debug text
-        Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
-        showDebugInfo3D(up2, 10.0f, {
-            fmt("%sSpinThrottle--", dbgSpinThrottle ? "~r~" : "~w~"),
-            fmt("%sSpinSteer++", dbgSpinCountersteer ? "~r~" : "~w~"),
-            fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
-            fmt("%sBrake4Radius", dbgBrakeForRadius ? "~r~" : "~w~"),
-            fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
-            fmt("LAThrottle: %s", npTSrc.c_str()),
-            fmt("LABrake: %s", npBSrc.c_str()),
-            fmt("LASteer: %s", npSSrc.c_str()),
-        });
+        if (gSettings.AIShowDebugText) {
+            Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
+            showDebugInfo3D(up2, 10.0f, {
+                fmt("%sSpinThrottle--", dbgSpinThrottle ? "~r~" : "~w~"),
+                fmt("%sSpinSteer++", dbgSpinCountersteer ? "~r~" : "~w~"),
+                fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
+                fmt("%sBrake4Radius", dbgBrakeForRadius ? "~r~" : "~w~"),
+                fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
+                fmt("LAThrottle: %s", npTSrc.c_str()),
+                fmt("LABrake: %s", npBSrc.c_str()),
+                fmt("LASteer: %s", npSSrc.c_str()),
+                });
+        }
     }
 }
 

@@ -75,6 +75,10 @@ void UpdateAI(){
     }
 
     if (gSettings.TrackShowDebug || gRecording) {
+        if (gTrackCoords.size()) {
+            drawSphere(gTrackCoords[0], 0.125f, { 255, 255, 0, 255 });
+        }
+
         for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
             auto coord = gTrackCoords[idx];
             float screenX, screenY;
@@ -273,6 +277,11 @@ void UpdateCheats() {
         for (auto& racer : gRacers) {
             racer.SetDebugView(true);
         }
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgaitxt"))) {
+        showNotification("Toggle debug text for racers");
+        gSettings.AIShowDebugText = !gSettings.AIShowDebugText;
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startrecord"))) {

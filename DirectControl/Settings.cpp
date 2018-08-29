@@ -13,6 +13,7 @@ Settings::Settings() {
 void Settings::SetOptimalDefaults() {
     TrackShowDebug = true;
     AIShowDebug = false;
+    AIShowDebugText = false;
     AIDefaultActive = true;
 
     AILookaheadThrottleSpeedMult = 3.5f;
@@ -60,6 +61,7 @@ void Settings::ReadSettings(const char *file) {
 
     TrackShowDebug =                    ini.GetBoolValue(debugSection, "TrackShowDebug");
     AIShowDebug =                       ini.GetBoolValue(debugSection, "AIShowDebug");
+    AIShowDebugText =                   ini.GetBoolValue(debugSection, "AIShowDebugText");
     AIDefaultActive =                   ini.GetBoolValue(debugSection, "AIDefaultActive");
 
     AILookaheadThrottleSpeedMult =      ini.GetDoubleValue(paramSection, "AILookaheadThrottleSpeedMult");
@@ -117,6 +119,8 @@ void Settings::WriteDefaults(const char *file) {
         "; Red: Braking, Green: Throttle, Blue: Steering\n"
         "; White: Physics heading without rotation\n"
         "; Yellow: Physics heading with rotation");
+    ini.SetBoolValue(debugSection, "AIShowDebugText", AIShowDebugText,
+        "; Show the AI decisions in text.");
     ini.SetBoolValue(debugSection, "AIDefaultActive", AIDefaultActive, 
         "; Enable AI driving by default, after spawning");
     
