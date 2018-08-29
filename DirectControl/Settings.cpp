@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include <fstream>
 #include <thirdparty/SimpleIni.h>
 #include "Util/Logger.hpp"
 #pragma warning( disable : 4244 )
@@ -19,14 +20,14 @@ void Settings::SetOptimalDefaults() {
     AILookaheadBrakeSpeedMult = 2.5f;
     AILookaheadBrakeMinDistance = 15.0f;
     AILookaheadSteerSpeedMult = 1.8f;
-    AILookaheadSteerMinDistance = 10.0f;
+    AILookaheadSteerMinDistance = 2.0f;
 
     AISteerMult = 1.33f;
 
     AICountersteerIncreaseStartAngle = 0.0f;
-    AICountersteerIncreaseEndAngle = 90.0f;
+    AICountersteerIncreaseEndAngle = 45.0f;
 
-    AIThrottleDecreaseStartAngle = 45.0f;
+    AIThrottleDecreaseStartAngle = 22.5f;
     AIThrottleDecreaseEndAngle = 90.0f;
 
     AIOversteerDetectionAngle = 10.0f;
@@ -35,7 +36,7 @@ void Settings::SetOptimalDefaults() {
     AIBrakePointDistanceBrakeMult = 0.75f;
 
     AIBrakePointHeadingMinAngle = 30.0f;
-    AIBrakePointHeadingMaxAngle = 52.5f;
+    AIBrakePointHeadingMaxAngle = 45.0f;
     AIBrakePointHeadingMinSpeed = 20.0f;
     AIBrakePointHeadingMaxSpeed = 40.0f;
 
@@ -92,6 +93,15 @@ void Settings::ReadSettings(const char *file) {
 }
 
 void Settings::WriteDefaults(const char *file) {
+    std::ofstream os(file, std::ofstream::out | std::ofstream::trunc);
+    os << "; AI Control settings\n"
+        "; The values in [AIParameters] tune how the AI drives.\n"
+        "; Default values are tuned for aggressive AWD driving with Killatomate's\n"
+        "; Realistic Driving V handling mod (v2.5 on b1493)\n"
+        "; This file is not read by the mod and is intended for your reference.\n"
+        "; Angles in degrees. Distance in meters. Speed in meters/second.\n";
+    os.close();
+
     SetOptimalDefaults();
     CSimpleIniA ini;
     ini.SetUnicode(true);
