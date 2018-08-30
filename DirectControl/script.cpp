@@ -58,12 +58,15 @@ Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bo
 void UpdateAI(){
     Ped playerPed = PLAYER::PLAYER_PED_ID();
 
+    std::vector<Vehicle> npcs(1024);
+    int npcCount = worldGetAllVehicles(npcs.data(), 1024);
+
     if (gPlayerRacer != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerRacer->GetVehicle(), -1) != playerPed) {
         gPlayerRacer->UpdateControl();
     }
 
     for (auto& racer : gRacers) {
-        racer.UpdateControl(gTrackCoords);
+        racer.UpdateControl(gTrackCoords, npcs);
     }
 
     if (gRecording) {

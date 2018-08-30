@@ -91,7 +91,7 @@ bool Racer::GetDebugView() {
     return mDebugView;
 }
 
-void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, float actualAngle, bool & handbrake, float & throttle, float & brake, float & steer) {
+void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, float actualAngle, bool& handbrake, float& throttle, float& brake, float& steer) {
     handbrake = false;
     throttle = 0.0f;
     brake = 1.0f;
@@ -290,7 +290,7 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     }
 }
 
-void Racer::UpdateControl(const std::vector<Vector3> &coords) {
+void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents) {
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
 
