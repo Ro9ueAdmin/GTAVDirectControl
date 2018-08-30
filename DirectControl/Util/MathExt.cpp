@@ -99,3 +99,7 @@ float GetAngleBetween(float h1, float h2, float separation) {
         return (separation - fabs(diff - 360.0f)) / separation;
     return separation;
 }
+
+int GetRand(int min, int mod) {
+    return min + (rand() % mod);
+}

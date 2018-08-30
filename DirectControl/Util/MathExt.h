@@ -48,3 +48,5 @@ T constrain(T x, T min, T max) {
     if (x < min) return min;
     return x;
 }
+
+int GetRand(int min, int mod);

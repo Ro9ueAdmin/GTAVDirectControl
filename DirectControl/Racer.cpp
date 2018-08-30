@@ -28,22 +28,28 @@ std::vector<Hash> headLightsOnWeathers = {
 Racer::Racer(Vehicle vehicle) :
     mVehicle(vehicle),
     mActive(gSettings.AIDefaultActive),
-    mDebugView(gSettings.AIShowDebug) {
+    mDebugView(gSettings.AIShowDebug),
+    mAuxPeriod(GetRand(2000, 10000)),
+    mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                       VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
 }
 
 Racer::Racer(Racer &&other) noexcept :
     mVehicle(other.mVehicle),
     mActive(other.mActive),
-    mDebugView(other.mDebugView) {
+    mDebugView(other.mDebugView),
+    mAuxPeriod(other.mAuxPeriod),
+    mAuxPrevTick(other.mAuxPrevTick) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                       VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
     other.mVehicle = 0;
 }
@@ -291,13 +297,17 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
 }
 
 void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents) {
+    if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
+        return;
+
+    if (GetTickCount() > mAuxPrevTick + mAuxPeriod) {
+        mAuxPeriod = GetRand(2000, 10000);
+        mAuxPrevTick = GetTickCount();
+        updateAux();
+    }
+
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
-
-    bool headlightsOn = false;
-    headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
-    headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
-    VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 
     float actualAngle = getSteeringAngle();
     float limitRadians = gExt.GetMaxSteeringAngle(mVehicle);
@@ -321,6 +331,13 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<
 
     gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
     gExt.SetHandbrake(mVehicle, handbrake);
+}
+
+void Racer::updateAux() {
+    bool headlightsOn = false;
+    headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
+    headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
+    VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 }
 
 Vehicle Racer::GetVehicle() {

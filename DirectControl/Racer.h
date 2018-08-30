@@ -146,8 +146,16 @@ protected:
     float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
                                   float reduction);
 
+    /**
+     * \brief                   Update auxiliary stuff, like lights and stuff.
+     */
+    void updateAux();
+
     Vehicle mVehicle;
     std::unique_ptr<BlipX> mBlip;
     bool mActive;
     bool mDebugView;
+
+    DWORD mAuxPeriod;
+    DWORD mAuxPrevTick;
 };
