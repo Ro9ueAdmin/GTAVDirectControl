@@ -151,6 +151,10 @@ protected:
      */
     void updateAux();
 
+    void updateStuck(const std::vector<Vector3> &coords);
+
+    const int mStuckThreshold;
+
     Vehicle mVehicle;
     std::unique_ptr<BlipX> mBlip;
     bool mActive;
@@ -158,4 +162,7 @@ protected:
 
     DWORD mAuxPeriod;
     DWORD mAuxPrevTick;
+
+    bool mIsStuck;
+    DWORD mStuckStarted;
 };

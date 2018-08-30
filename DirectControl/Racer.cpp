@@ -26,11 +26,14 @@ std::vector<Hash> headLightsOnWeathers = {
 };
 
 Racer::Racer(Vehicle vehicle) :
+    mStuckThreshold(2000),
     mVehicle(vehicle),
     mActive(gSettings.AIDefaultActive),
     mDebugView(gSettings.AIShowDebug),
     mAuxPeriod(GetRand(2000, 10000)),
-    mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod) {
+    mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod),
+    mIsStuck(false),
+    mStuckStarted(0) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -40,11 +43,14 @@ Racer::Racer(Vehicle vehicle) :
 }
 
 Racer::Racer(Racer &&other) noexcept :
+    mStuckThreshold(other.mStuckThreshold),
     mVehicle(other.mVehicle),
     mActive(other.mActive),
     mDebugView(other.mDebugView),
     mAuxPeriod(other.mAuxPeriod),
-    mAuxPrevTick(other.mAuxPrevTick) {
+    mAuxPrevTick(other.mAuxPrevTick),
+    mIsStuck(other.mIsStuck),
+    mStuckStarted(other.mStuckStarted) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -271,7 +277,12 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
             255
         };
 
-        drawChevron(up, dir, rot, 1.0f, throttle, c);
+        if (mIsStuck) {
+            drawSphere(up, 0.5f, red);
+        }
+        else {
+            drawChevron(up, dir, rot, 1.0f, throttle, c);
+        }
 
         // spinout ratio
         drawLine(aiPosition, nextPositionVelocity, white);
@@ -306,6 +317,8 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<
         updateAux();
     }
 
+    updateStuck(coords);
+
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
 
@@ -319,6 +332,13 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<
     float steer = 0.0f;
 
     getControls(coords, limitRadians, actualAngle, handbrake, throttle, brake, steer);
+
+    if (mIsStuck) {
+        throttle = -0.4f;
+        brake = 0.0f;
+        steer = 0.0f;
+        handbrake = false;
+    }
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
@@ -338,6 +358,42 @@ void Racer::updateAux() {
     headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
     headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
+}
+
+void Racer::updateStuck(const std::vector<Vector3> &coords) {
+    if (coords.size() < 2 || !mActive) {
+        mIsStuck = false;
+        mStuckStarted = 0;
+        return;
+    }
+
+    if (!mIsStuck) {
+        if (mStuckStarted == 0) {
+            if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
+                mStuckStarted = GetTickCount();
+            }
+        }
+        if (GetTickCount() > mStuckStarted + mStuckThreshold && GetTickCount() < mStuckStarted + 2 * mStuckThreshold) {
+            if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
+                mIsStuck = true;
+                if (mDebugView) {
+                    showNotification(fmt("Attempting to unstuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+                }
+            }
+            else {
+                mIsStuck = false;
+                mStuckStarted = 0;
+            }
+        }
+    }
+    else {
+        if (GetTickCount() > mStuckStarted + 2 * mStuckThreshold) {
+            mIsStuck = false;
+            mStuckStarted = 0;
+        }
+    }
+    
 }
 
 Vehicle Racer::GetVehicle() {
