@@ -412,11 +412,11 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     float radius = (0.5f*length) / cos(angle*0.5f);
 
     if (radius <= 0.0f)
-        radius = 1000.0f;
-    else if (radius > 1000.0f)
-        radius = 1000.0f;
+        radius = 10000.0f;
+    else if (radius > 10000.0f)
+        radius = 10000.0f;
     else if (std::isnan(radius))
-        radius = 1000.0f;
+        radius = 10000.0f;
 
     return radius;
 }
