@@ -103,11 +103,74 @@ bool Racer::GetDebugView() {
     return mDebugView;
 }
 
-void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, float actualAngle, bool& handbrake, float& throttle, float& brake, float& steer) {
+void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
+                        float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
     handbrake = false;
     throttle = 0.0f;
     brake = 1.0f;
     steer = 0.0f;
+    
+    Vector3 npcSteerPos{};
+    {
+        Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+        Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
+        float aiHeading = atan2(aiForward.y, aiForward.x);
+        Vector3 aiDimMin, aiDimMax;
+        GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &aiDimMin, &aiDimMax);
+        Vector3 aiDim = aiDimMax - aiDimMin;
+        float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult;
+
+        float closest = 10000.0;
+        int closestIdx = opponents.size();
+        for (int i = 0; i < opponents.size(); ++i) {
+            Vehicle npc = opponents[i];
+            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+            if (!ENTITY::DOES_ENTITY_EXIST(npc)) continue;
+            if (npc == mVehicle) continue;
+            if (Distance(aiPosition, npcPosition) > closest) continue;
+            closest = Distance(aiPosition, npcPosition);
+            closestIdx = i;
+        }
+
+        if (closestIdx != opponents.size()) {
+            Vehicle npc = opponents[closestIdx];
+            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+            float npcDistance = Distance(aiPosition, npcPosition);
+            if (npcDistance < (aiLookahead > 30.0f ? aiLookahead : 30.0f)) {
+                Vector3 npcDimMin, npcDimMax;
+                GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &npcDimMin, &npcDimMax);
+                Vector3 npcDim = npcDimMax - npcDimMin;
+
+                Vector3 npcDirection = Normalize(npcPosition - aiPosition);
+                Vector3 npcRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, npcPosition.x, npcPosition.y, npcPosition.z);
+                float npcHeading = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
+
+                bool inRange = false;
+
+                float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
+                float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
+
+                if (Distance(aiPosition, npcPosition) < aiSpeed && abs(npcHeading) < deg2rad(90.0f) && aiSpeed >= npcSpeed) {
+                    Vector3 npcSteerOffset{};
+                    Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
+
+                    npcSteerOffset.x = npcDim.x * 2.0f * sgn(-npcRelativePosition.x - sin(rotationVelocity.z));
+                    npcSteerOffset.y = constrain(-npcRelativePosition.y, -npcDim.y * 1.0f, npcDim.y * 3.0f) + aiDim.y;
+                    npcSteerPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcSteerOffset.x, npcSteerOffset.y, 0.0f);
+                    drawSphere(npcSteerPos, 0.50f, { 0, 255, 255, 255 });
+                    inRange = true;
+                }
+
+                Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 2.0f);
+                showDebugInfo3D(up, 10.0f, {
+                    fmt("Rel. Angle: %.03f", rad2deg(npcHeading)),
+                    fmt("%sDim(%.02f, %.02f, %.02f)", inRange ? "~g~" : "~r~", npcDim.x, npcDim.y, npcDim.z)
+                    });
+                closest = Distance(aiPosition, npcPosition);
+            }
+        }
+
+    }
 
     if (coords.size() < 2)
         return;
@@ -131,10 +194,35 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float lookAheadSteer = constrain(gSettings.AILookaheadSteerSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadSteerMinDistance, 9999.0f);
     float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
-
-    
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
+
+    if (Length(npcSteerPos) > 0.0f) {
+        float smallestToAiDist = 10000.0f;
+        float smallestToNpcDist = 10000.0f;
+        Vector3 smallestToAi{};
+        Vector3 smallestToNpc{};
+        for (auto i = 0; i < coords.size(); ++i) {
+            float distanceAi = Distance(aiPosition, coords[i]);
+            float distanceNpc = Distance(npcSteerPos, coords[i]);
+
+            if (distanceAi < smallestToAiDist) {
+                smallestToAiDist = distanceAi;
+                smallestToAi = coords[i];
+            }
+            if (distanceNpc < smallestToNpcDist) {
+                smallestToNpcDist = distanceNpc;
+                smallestToNpc = coords[i];
+            }
+
+        }
+
+        // dist < track width?
+        if (Distance(aiPosition, smallestToAi) > Distance(npcSteerPos, smallestToNpc) || Distance(npcSteerPos, smallestToNpc) < 5.0f) {
+            nextPositionSteer = npcSteerPos;
+        }
+    }
+
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
@@ -189,7 +277,9 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         dbgSpinCountersteer = steerMult > 1.0f;
     }
 
-    handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
+    if (Length(npcSteerPos) == 0.0f) {
+        handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
+    }
 
     float maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
 
@@ -311,7 +401,7 @@ void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<
     float brake = 0.0f;
     float steer = 0.0f;
 
-    getControls(coords, limitRadians, actualAngle, handbrake, throttle, brake, steer);
+    getControls(coords, opponents, limitRadians, actualAngle, handbrake, throttle, brake, steer);
 
     if (mIsStuck) {
         throttle = -0.4f;
@@ -401,7 +491,8 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     return radius;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, std::string &source) {
+Vector3 Racer::getCoord(const std::vector<Vector3>& coords,
+                        float lookAheadDistance, float actualAngle, std::string &source) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;

@@ -96,8 +96,8 @@ protected:
      * \param [out] brake       Brake output.
      * \param [out] steer       Steering output.
      */
-    void getControls(const std::vector<Vector3> &coords, float limitRadians, float actualAngle, bool &handbrake,
-                     float &throttle, float &brake, float &steer);
+    void getControls(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
+                     bool &handbrake, float &throttle, float &brake, float &steer);
 
     /**
      * \brief                           Choose a specific coordinate to navigate to, depending on input data.
@@ -107,8 +107,8 @@ protected:
      * \param [out] source              Debug info containing which mode was used for choosing the coordinate.
      * \return                          Chosen coordinate from the list.
      */
-    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float actualAngle,
-                     std::string &source);
+    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance,
+                     float actualAngle, std::string &source);
 
     /**
      * \brief                   Calculate corner radius at the selected coordinate.
