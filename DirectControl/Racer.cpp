@@ -118,8 +118,10 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     bool dbgSpinThrottle = false;
     bool dbgSpinCountersteer = false;
     bool dbgBrakeForAngle = false;
-    bool dbgBrakeForRadius = false;
     bool dbgBrakeForHeading = false;
+    std::string dbgThrottleSrc;
+    std::string dbgBrakeSrc;
+    std::string dbgSteerSrc;
 
     Vector3 aiVelocity = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
@@ -129,17 +131,11 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
     float lookAheadSteer = constrain(gSettings.AILookaheadSteerSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadSteerMinDistance, 9999.0f);
     float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
-    float cornerRadiusThrottle;
-    float cornerRadiusSteer;
-    float cornerRadiusBrake;
 
-    std::string npTSrc;
-    std::string npBSrc;
-    std::string npSSrc;
     
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, cornerRadiusThrottle, npTSrc);
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, cornerRadiusSteer, npSSrc);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, cornerRadiusBrake, npBSrc);
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -215,21 +211,6 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
         }
     }
 
-    float avgRadius1 = (cornerRadiusThrottle + cornerRadiusBrake) / 2.0f;
-    float avgRadius2 = (cornerRadiusSteer + cornerRadiusBrake) / 2.0f;
-    float avgRadius = avgRadius1 < avgRadius2 ? avgRadius1 : avgRadius2;
-
-
-    float radiusToConsider = map(ENTITY::GET_ENTITY_SPEED(mVehicle) / 3.6f, 0.0f, gSettings.AIBrakePointRadiusMaxSpeed, 0.0f, gSettings.AIBrakePointRadiusMaxRadius);
-    if (avgRadius > 0.0f && avgRadius < radiusToConsider) {
-        float radiusBrakeMult = map(avgRadius, 0.0f, radiusToConsider, 1.0f, 0.0f);
-
-        if (radiusBrakeMult > maxBrake) {
-            maxBrake = radiusBrakeMult;
-            dbgBrakeForRadius = true;
-        }
-    }
-
     throttle = constrain(throttle, 0.0f, 1.0f);
     brake = constrain(maxBrake, 0.0f, 1.0f);
     steer = constrain(turnSteer * steerMult, -1.0f, 1.0f);
@@ -297,12 +278,11 @@ void Racer::getControls(const std::vector<Vector3>& coords, float limitRadians, 
                 fmt("%sSpinThrottle--", dbgSpinThrottle ? "~r~" : "~w~"),
                 fmt("%sSpinSteer++", dbgSpinCountersteer ? "~r~" : "~w~"),
                 fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
-                fmt("%sBrake4Radius", dbgBrakeForRadius ? "~r~" : "~w~"),
                 fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
-                fmt("LAThrottle: %s", npTSrc.c_str()),
-                fmt("LABrake: %s", npBSrc.c_str()),
-                fmt("LASteer: %s", npSSrc.c_str()),
-                });
+                fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
+                fmt("LABrake: %s", dbgBrakeSrc.c_str()),
+                fmt("LASteer: %s", dbgSteerSrc.c_str()),
+            });
         }
     }
 }
@@ -421,7 +401,7 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     return radius;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, float &cornerRadius, std::string &source) {
+Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDistance, float actualAngle, std::string &source) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
@@ -458,16 +438,6 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
     int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
     int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
 
-    // Expected Look-ahead index
-    //int expectedLaIdx = (smallestToAiIdx + nodesToConsider) % coords.size();
-    //int expectedLaIdxB = (smallestToAiIdx + nodesToConsider);
-
-    //if (smallestToLaIdx < smallestToAiIdx && smallestToLaIdx < nodesToConsider && smallestToAiIdx > coords.size() - nodesToConsider) {
-    //    // Ensure start/stop is continuous
-    //    returnIndex = smallestToLaIdx;
-    //    source = "start/stop";
-    //}
-    //else 
     if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
         returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
@@ -480,14 +450,6 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords, float lookAheadDista
         source = "forwards";
     }
 
-    int nodesForRadius = 6;
-    float averageRadius = 0.0f;
-
-    for (int i = 0; i < nodesForRadius; ++i) {
-        averageRadius += getCornerRadius(coords, (returnIndex + i) % coords.size());
-    }
-
-    cornerRadius = averageRadius / static_cast<float>(nodesForRadius);
     return coords[returnIndex];
 }
 

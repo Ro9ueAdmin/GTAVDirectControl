@@ -104,12 +104,11 @@ protected:
      * \param [in] coords               List of track coordinates.
      * \param [in] lookAheadDistance    Look-ahead distance to consider a matching coordinate of the track.
      * \param [in] actualAngle          Current steering angle.
-     * \param [out] cornerRadius        Average radius of corner the selected coordinate is at.
      * \param [out] source              Debug info containing which mode was used for choosing the coordinate.
      * \return                          Chosen coordinate from the list.
      */
     Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance, float actualAngle,
-                     float &cornerRadius, std::string &source);
+                     std::string &source);
 
     /**
      * \brief                   Calculate corner radius at the selected coordinate.
