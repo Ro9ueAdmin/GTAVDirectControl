@@ -111,6 +111,8 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
     steer = 0.0f;
     
     Vector3 npcSteerPos{};
+    float npcWidth;
+    Vector3 npcCoord;
     {
         Vector3 aiDim = GetEntityDimensions(mVehicle);
         Vector3 aiNose = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y / 2.0f, 0.0f);
@@ -130,7 +132,7 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
 
         // Get a coordinate perpendicular to the NPC to overtake/avoid.
         if (closestIdx != opponents.size()) {
-            Vector3 aiPosition = aiNose;
+            Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);;
             Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
             float aiHeading = atan2(aiForward.y, aiForward.x);
             float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult;
@@ -139,6 +141,7 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             Vector3 npcDim = GetEntityDimensions(npc);
             Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
             Vector3 npcForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(npc));
+            float npcHeading = atan2(npcForward.y, npcForward.x);
             float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
 
             float npcDistance = Distance(aiPosition, npcPosition);
@@ -146,23 +149,31 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             if (npcDistance < searchDistance) {
                 Vector3 npcDirection = Normalize(npcPosition - aiPosition);
                 Vector3 npcRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, npcPosition.x, npcPosition.y, npcPosition.z);
-                float npcHeading = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
+                float headingAiToNpc = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
                 Vector3 npcToAIDirection = Normalize(aiPosition - npcPosition);
                 Vector3 aiRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(npc, aiPosition.x, aiPosition.y, aiPosition.z);
-                float headingNpcToAI = GetAngleBetween(npcForward, npcToAIDirection) * sgn(aiRelativePosition.x);
+                float headingNpcToAi = GetAngleBetween(npcForward, npcToAIDirection) * sgn(aiRelativePosition.x);
 
                 float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
-                float searchAngle = constrain(map(npcDistance, 0.0f, searchDistance, 120.0f, 45.0f), 60.0f, 120.0f);
-                if (abs(npcHeading) < deg2rad(90.0f) && aiSpeed * 1.1f >= npcSpeed) {
-                    float offsetY = npcDim.y/2.0f;
-                    float distMultX = 2.5f;
-                    float distMultY = 5.0f;
-                    Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, offsetY, 0.0f);
-                    Vector3 npcDirectionWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI), distMultY * npcDim.y * cos(headingNpcToAI) + offsetY, 0.0f);
-                    Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI + deg2rad(90.0f)), distMultY * npcDim.y * cos(headingNpcToAI + deg2rad(90.0f)) + offsetY, 0.0f);
-                    Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI - deg2rad(90.0f)), distMultY * npcDim.y * cos(headingNpcToAI - deg2rad(90.0f)) + offsetY, 0.0f);
+                float searchAngle = constrain(map(npcDistance, 0.0f, searchDistance, 90.0f, 45.0f), 60.0f, 120.0f);
+                if (abs(headingAiToNpc) < deg2rad(searchAngle) && aiSpeed * 1.1f >= npcSpeed) {
 
-                    if (headingNpcToAI < 0.0f) {
+                    float diffHeading = atan2(sin(aiHeading - npcHeading), cos(aiHeading - npcHeading));
+                    float perpRatio = 1.0f - abs((abs(diffHeading) - 1.5708f) / 1.5708f);
+
+                    // Keep oval shape around entity to overtake, with the long direction being the direction you're heading
+                    float distMultX = 2.0f * npcDim.x + 10.0f * map(perpRatio, 0.0f, 1.0f, 0.0f, 1.0f); //x mult increase when ai-npc perpendicular
+                    float distMultY = 2.0f * npcDim.y + 10.0f * map(perpRatio, 0.0f, 1.0f, 1.0f, 0.0f); //y mult increase when ai-npc lined up
+
+                    Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 0.0f);
+                    Vector3 npcDirectionWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDistance * sin(headingNpcToAi), npcDistance * cos(headingNpcToAi), 0.0f);
+                    Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(headingNpcToAi + deg2rad(90.0f)), distMultY * cos(headingNpcToAi + deg2rad(90.0f)), 0.0f);
+                    Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(headingNpcToAi - deg2rad(90.0f)), distMultY * cos(headingNpcToAi - deg2rad(90.0f)), 0.0f);
+
+                    float angleCW = GetAngleBetween(aiForward, Normalize(npcDirectionWorldCW - aiNose));
+                    float angleCCW = GetAngleBetween(aiForward, Normalize(npcDirectionWorldCCW - aiNose));
+
+                    if (angleCW < angleCCW) {
                         npcSteerPos = npcDirectionWorldCW;
                     }
                     else {
@@ -459,6 +470,9 @@ void Racer::updateStuck(const std::vector<Vector3> &coords) {
         if (GetTickCount() > mStuckStarted + mStuckThreshold && GetTickCount() < mStuckStarted + 2 * mStuckThreshold) {
             if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
                 mIsStuck = true;
+                if (!VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(mVehicle)) {
+                    VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+                }
                 if (mDebugView) {
                     showNotification(fmt("Attempting to unstuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
                         VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
