@@ -233,7 +233,7 @@ void UpdateCheats() {
 
             // to the right
             // my width + ( margin + spawn width ) * iteration
-            offsetX = ((myDimMax.x - myDimMin.x) / 2.0f) + (1.0f + ((modelDimMax.x - modelDimMin.x) / 2.0f)) * (float)(i + 1);
+            offsetX = ((myDimMax.x - myDimMin.x) / 2.0f) + (2.0f + ((modelDimMax.x - modelDimMin.x) / 2.0f)) * (float)(i + 1);
 
             Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
             Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
@@ -285,6 +285,16 @@ void UpdateCheats() {
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgaitxt"))) {
         showNotification("Toggle debug text for racers");
         gSettings.AIShowDebugText = !gSettings.AIShowDebugText;
+    }
+
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgthis"))) {
+        for (auto& racer : gRacers) {
+            if (racer.GetVehicle() == vehicle) {
+                showNotification("Toggle debug for current");
+                racer.SetDebugView(!racer.GetDebugView());
+                break;
+            }
+        }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startrecord"))) {
