@@ -50,3 +50,8 @@ T constrain(T x, T min, T max) {
 }
 
 int GetRand(int min, int mod);
+
+Vector3 GetEntityDimensions(Entity e);
+
+Vector3 GetModelDimensions(Hash model);
+

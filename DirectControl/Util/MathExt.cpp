@@ -1,6 +1,7 @@
 #include "MathExt.h"
 #include <math.h>
 #include <inc/types.h>
+#include "inc/natives.h"
 
 float lerp(float a, float b, float f) {
     return a + f * (b - a);
@@ -77,7 +78,7 @@ Vector3 Normalize(Vector3 vec) {
 }
 
 Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forward, Vector3 offset) {
-    const float deg2Rad = 0.01745329251994329576923690768489;
+    const float deg2Rad = 0.01745329251994329576923690768489f;
     float num1 = cosf(rotation.y * deg2Rad);
     float x = num1 * cosf(-rotation.z  * deg2Rad);
     float y = num1 * sinf(rotation.z  * deg2Rad);
@@ -102,4 +103,14 @@ float GetAngleBetween(float h1, float h2, float separation) {
 
 int GetRand(int min, int mod) {
     return min + (rand() % mod);
+}
+
+Vector3 GetEntityDimensions(Entity e) {
+    return GetModelDimensions(ENTITY::GET_ENTITY_MODEL(e));
+}
+
+Vector3 GetModelDimensions(Hash model) {
+    Vector3 modelDimMin, modelDimMax;
+    GAMEPLAY::GET_MODEL_DIMENSIONS(model, &modelDimMin, &modelDimMax);
+    return modelDimMax - modelDimMin;
 }

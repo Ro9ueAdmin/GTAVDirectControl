@@ -112,14 +112,10 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
     
     Vector3 npcSteerPos{};
     {
-        Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
-        Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
-        float aiHeading = atan2(aiForward.y, aiForward.x);
-        Vector3 aiDimMin, aiDimMax;
-        GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &aiDimMin, &aiDimMax);
-        Vector3 aiDim = aiDimMax - aiDimMin;
-        float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult;
+        Vector3 aiDim = GetEntityDimensions(mVehicle);
+        Vector3 aiNose = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y / 2.0f, 0.0f);
 
+        // Get NPC closest to front of vehicle
         float closest = 10000.0;
         int closestIdx = opponents.size();
         for (int i = 0; i < opponents.size(); ++i) {
@@ -127,49 +123,66 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
             if (!ENTITY::DOES_ENTITY_EXIST(npc)) continue;
             if (npc == mVehicle) continue;
-            if (Distance(aiPosition, npcPosition) > closest) continue;
-            closest = Distance(aiPosition, npcPosition);
+            if (Distance(aiNose, npcPosition) > closest) continue;
+            closest = Distance(aiNose, npcPosition);
             closestIdx = i;
         }
 
+        // Get a coordinate perpendicular to the NPC to overtake/avoid.
         if (closestIdx != opponents.size()) {
-            Vehicle npc = opponents[closestIdx];
-            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
-            float npcDistance = Distance(aiPosition, npcPosition);
-            if (npcDistance < (aiLookahead > 30.0f ? aiLookahead : 30.0f)) {
-                Vector3 npcDimMin, npcDimMax;
-                GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &npcDimMin, &npcDimMax);
-                Vector3 npcDim = npcDimMax - npcDimMin;
+            Vector3 aiPosition = aiNose;
+            Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
+            float aiHeading = atan2(aiForward.y, aiForward.x);
+            float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult;
 
+            Vehicle npc = opponents[closestIdx];
+            Vector3 npcDim = GetEntityDimensions(npc);
+            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+            Vector3 npcForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(npc));
+            float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
+
+            float npcDistance = Distance(aiPosition, npcPosition);
+            float searchDistance = aiLookahead > 30.0f ? aiLookahead : 30.0f;
+            if (npcDistance < searchDistance) {
                 Vector3 npcDirection = Normalize(npcPosition - aiPosition);
                 Vector3 npcRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, npcPosition.x, npcPosition.y, npcPosition.z);
                 float npcHeading = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
+                Vector3 npcToAIDirection = Normalize(aiPosition - npcPosition);
+                Vector3 aiRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(npc, aiPosition.x, aiPosition.y, aiPosition.z);
+                float headingNpcToAI = GetAngleBetween(npcForward, npcToAIDirection) * sgn(aiRelativePosition.x);
 
-                bool inRange = false;
-
-                float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
                 float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
+                float searchAngle = constrain(map(npcDistance, 0.0f, searchDistance, 120.0f, 45.0f), 60.0f, 120.0f);
+                if (abs(npcHeading) < deg2rad(90.0f) && aiSpeed * 1.1f >= npcSpeed) {
+                    float offsetY = npcDim.y/2.0f;
+                    float distMultX = 2.5f;
+                    float distMultY = 5.0f;
+                    Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, offsetY, 0.0f);
+                    Vector3 npcDirectionWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI), distMultY * npcDim.y * cos(headingNpcToAI) + offsetY, 0.0f);
+                    Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI + deg2rad(90.0f)), distMultY * npcDim.y * cos(headingNpcToAI + deg2rad(90.0f)) + offsetY, 0.0f);
+                    Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * npcDim.x * sin(headingNpcToAI - deg2rad(90.0f)), distMultY * npcDim.y * cos(headingNpcToAI - deg2rad(90.0f)) + offsetY, 0.0f);
 
-                if (Distance(aiPosition, npcPosition) < aiSpeed && abs(npcHeading) < deg2rad(90.0f) && aiSpeed >= npcSpeed) {
-                    Vector3 npcSteerOffset{};
-                    Vector3 rotationVelocity = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
+                    if (headingNpcToAI < 0.0f) {
+                        npcSteerPos = npcDirectionWorldCW;
+                    }
+                    else {
+                        npcSteerPos = npcDirectionWorldCCW;
+                    }
 
-                    npcSteerOffset.x = npcDim.x * 2.0f * sgn(-npcRelativePosition.x - sin(rotationVelocity.z));
-                    npcSteerOffset.y = constrain(-npcRelativePosition.y, -npcDim.y * 1.0f, npcDim.y * 3.0f) + aiDim.y;
-                    npcSteerPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcSteerOffset.x, npcSteerOffset.y, 0.0f);
-                    drawSphere(npcSteerPos, 0.50f, { 0, 255, 255, 255 });
-                    inRange = true;
+                    if (mDebugView) {
+                        drawSphere(aiNose, 0.25f, { 0, 0, 0, 255 });
+                        drawLine(npcOffset, npcDirectionWorld, { 255, 255, 255, 255 });
+                        drawSphere(npcDirectionWorld, 0.1250f, { 255, 255, 255, 255 });
+                        drawLine(npcOffset, npcDirectionWorldCW, { 255, 0, 0, 255 });
+                        drawSphere(npcDirectionWorldCW, 0.1250f, { 255, 0, 0, 255 });
+                        drawLine(npcOffset, npcDirectionWorldCCW, { 0, 0, 255, 255 });
+                        drawSphere(npcDirectionWorldCCW, 0.1250f, { 0, 0, 255, 255 });
+                        drawLine(aiPosition, npcSteerPos, { 255, 0, 255, 255 });
+                        drawSphere(npcSteerPos, 0.1250f, { 255, 0, 255, 255 });
+                    }
                 }
-
-                Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 2.0f);
-                showDebugInfo3D(up, 10.0f, {
-                    fmt("Rel. Angle: %.03f", rad2deg(npcHeading)),
-                    fmt("%sDim(%.02f, %.02f, %.02f)", inRange ? "~g~" : "~r~", npcDim.x, npcDim.y, npcDim.z)
-                    });
-                closest = Distance(aiPosition, npcPosition);
             }
         }
-
     }
 
     if (coords.size() < 2)
