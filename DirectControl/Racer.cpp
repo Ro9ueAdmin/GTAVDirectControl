@@ -109,13 +109,21 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
     throttle = 0.0f;
     brake = 1.0f;
     steer = 0.0f;
-    
+
+    // TODO: INCREASE lookahead to be more than steering lookahad
+    // TODO: AI uitwijken voor iets op de racing lijn
+    // TODO: Overtake mijn kont pas invoegen als ik bijna voorbij neusje ben
+    // TODO: r = Mijn breedte/2 + die andere breedte/2
+    // todo: r = mijn lengte / 2 + die andere lang / 2
+
     Vector3 npcSteerPos{};
     float npcWidth;
     Vector3 npcCoord;
+    
     {
         Vector3 aiDim = GetEntityDimensions(mVehicle);
         Vector3 aiNose = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y / 2.0f, 0.0f);
+        Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
 
         // Get NPC closest to front of vehicle
         float closest = 10000.0;
@@ -125,8 +133,8 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
             if (!ENTITY::DOES_ENTITY_EXIST(npc)) continue;
             if (npc == mVehicle) continue;
-            if (Distance(aiNose, npcPosition) > closest) continue;
-            closest = Distance(aiNose, npcPosition);
+            if (Distance(aiNose2, npcPosition) > closest) continue;
+            closest = Distance(aiNose2, npcPosition);
             closestIdx = i;
         }
 
@@ -135,11 +143,11 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);;
             Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
             float aiHeading = atan2(aiForward.y, aiForward.x);
-            float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult;
+            float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult * 1.1f;
 
             Vehicle npc = opponents[closestIdx];
             Vector3 npcDim = GetEntityDimensions(npc);
-            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+            Vector3 npcPosition = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, npcDim.y / 2.0f, 0.0f);//ENTITY::GET_ENTITY_COORDS(npc, 1);
             Vector3 npcForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(npc));
             float npcHeading = atan2(npcForward.y, npcForward.x);
             float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
@@ -155,15 +163,15 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
                 float headingNpcToAi = GetAngleBetween(npcForward, npcToAIDirection) * sgn(aiRelativePosition.x);
 
                 float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
-                float searchAngle = constrain(map(npcDistance, 0.0f, searchDistance, 90.0f, 45.0f), 60.0f, 120.0f);
-                if (abs(headingAiToNpc) < deg2rad(searchAngle) && aiSpeed * 1.1f >= npcSpeed) {
+                float searchAngle = constrain(map(npcDistance, npcDim.x * 0.5f + aiDim.x * 0.5f, searchDistance, 90.0f, 45.0f), 45.0f, 120.0f);
+                if (abs(headingAiToNpc) < deg2rad(searchAngle) && aiSpeed * 1.25f >= npcSpeed) {
 
                     float diffHeading = atan2(sin(aiHeading - npcHeading), cos(aiHeading - npcHeading));
                     float perpRatio = 1.0f - abs((abs(diffHeading) - 1.5708f) / 1.5708f);
 
                     // Keep oval shape around entity to overtake, with the long direction being the direction you're heading
-                    float distMultX = 2.0f * npcDim.x + 10.0f * map(perpRatio, 0.0f, 1.0f, 0.0f, 1.0f); //x mult increase when ai-npc perpendicular
-                    float distMultY = 2.0f * npcDim.y + 10.0f * map(perpRatio, 0.0f, 1.0f, 1.0f, 0.0f); //y mult increase when ai-npc lined up
+                    float distMultX = npcDim.x + aiDim.x / 1.5f + 10.0f * map(perpRatio, 0.0f, 1.0f, 0.0f, 1.0f); //x mult increase when ai-npc perpendicular
+                    float distMultY = 2.0f * npcDim.y + aiDim.x + 10.0f * map(perpRatio, 0.0f, 1.0f, 1.0f, 0.0f); //y mult increase when ai-npc lined up
 
                     Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 0.0f);
                     Vector3 npcDirectionWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDistance * sin(headingNpcToAi), npcDistance * cos(headingNpcToAi), 0.0f);
@@ -180,8 +188,11 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
                         npcSteerPos = npcDirectionWorldCCW;
                     }
 
+                    npcWidth = npcDim.x;
+                    npcCoord = npcPosition;
+
                     if (mDebugView) {
-                        drawSphere(aiNose, 0.25f, { 0, 0, 0, 255 });
+                        drawSphere(npcPosition, 0.25f, { 0, 0, 0, 255 });
                         drawLine(npcOffset, npcDirectionWorld, { 255, 255, 255, 255 });
                         drawSphere(npcDirectionWorld, 0.1250f, { 255, 255, 255, 255 });
                         drawLine(npcOffset, npcDirectionWorldCW, { 255, 0, 0, 255 });
@@ -222,27 +233,39 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
 
     if (Length(npcSteerPos) > 0.0f) {
-        float smallestToAiDist = 10000.0f;
-        float smallestToNpcDist = 10000.0f;
+        float aiTrackDist = 10000.0f;
+        float overtakeTrackDist = 10000.0f;
+        float npcTrackDist = 10000.0f;
+
         Vector3 smallestToAi{};
+        Vector3 smallestToOt{};
         Vector3 smallestToNpc{};
+
         for (auto i = 0; i < coords.size(); ++i) {
             float distanceAi = Distance(aiPosition, coords[i]);
-            float distanceNpc = Distance(npcSteerPos, coords[i]);
+            float distanceOt = Distance(npcSteerPos, coords[i]);
+            float distanceNpc = Distance(npcCoord, coords[i]);
 
-            if (distanceAi < smallestToAiDist) {
-                smallestToAiDist = distanceAi;
+            if (distanceAi < aiTrackDist) {
+                aiTrackDist = distanceAi;
                 smallestToAi = coords[i];
             }
-            if (distanceNpc < smallestToNpcDist) {
-                smallestToNpcDist = distanceNpc;
+            if (distanceOt < overtakeTrackDist) {
+                overtakeTrackDist = distanceOt;
+                smallestToOt = coords[i];
+            }
+            if (distanceNpc < npcTrackDist) {
+                npcTrackDist = distanceNpc;
                 smallestToNpc = coords[i];
             }
-
         }
 
-        // dist < track width?
-        if (Distance(aiPosition, smallestToAi) > Distance(npcSteerPos, smallestToNpc) || Distance(npcSteerPos, smallestToNpc) < 5.0f) {
+        if (// Point for overtaking is closer to ideal line
+            aiTrackDist > overtakeTrackDist ||  
+            // ???
+            //overtakeTrackDist < npcWidth ||     
+            // NPC is on ideal line
+            npcTrackDist < npcWidth) {          
             nextPositionSteer = npcSteerPos;
         }
     }
