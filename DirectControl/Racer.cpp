@@ -217,6 +217,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     bool dbgSpinCountersteer = false;
     bool dbgBrakeForAngle = false;
     bool dbgBrakeForHeading = false;
+    bool dbgTrackLimits = false;
     std::string dbgThrottleSrc;
     std::string dbgBrakeSrc;
     std::string dbgSteerSrc;
@@ -351,6 +352,41 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
+
+    {
+        float smallestDistanceVelocity = 10000.0f;
+        float smallestDistanceRotation = 10000.0f;
+        float smallestDistanceAI = 10000.0f;
+        Point aiTrackClosest{};
+        Point turnTrackClosest{};
+        for (auto& point : coords) {
+            Vector3 coord = point.v;
+            float distanceVel = Distance(nextPositionVelocity, coord);
+            float distanceRot = Distance(turnWorld, coord);
+            float distanceAI = Distance(aiPosition, coord);
+            if (distanceVel < smallestDistanceVelocity) {
+                smallestDistanceVelocity = distanceVel;
+            }
+            if (distanceRot < smallestDistanceRotation) {
+                smallestDistanceRotation = distanceRot;
+                turnTrackClosest = point;
+            }
+            if (distanceAI < smallestDistanceAI) {
+                smallestDistanceAI = distanceAI;
+                aiTrackClosest = point;
+            }
+
+        }
+        if ((smallestDistanceVelocity + smallestDistanceRotation) / 2.0f > turnTrackClosest.w &&
+            smallestDistanceAI < 2.0f * aiTrackClosest.w) {
+            dbgTrackLimits = true;
+            float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
+            throttle *= constrain(map(overshoot, 0.0f, 1.0f, 1.0f, 0.0f), 0.0f, 1.0f);
+            steer *= map(overshoot, 0.0f, 1.0f, 1.0f, 2.0f);
+        }
+    }
+
+
     throttle = constrain(throttle, 0.0f, 1.0f);
     brake = constrain(maxBrake, 0.0f, 1.0f);
     steer = constrain(turnSteer * steerMult, -1.0f, 1.0f);
@@ -422,6 +458,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
                 fmt("LABrake: %s", dbgBrakeSrc.c_str()),
                 fmt("LASteer: %s", dbgSteerSrc.c_str()),
+                fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~")
             });
         }
     }
@@ -582,13 +619,16 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
     int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
     int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
 
-    if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
+    if (returnIndex == coords.size() - 1 && (lookAheadDistance > smallestToLa || Distance(coords[0].v, coords[coords.size() - 1].v) > lookAheadDistance)) {
+        returnIndex = 0;
+        source = "start/stop";
+    }
+    else if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
         returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
         source = "continuous";
     }
-    else 
-    if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
+    else if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
         // Ensure going forwards
         returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
         source = "forwards";
