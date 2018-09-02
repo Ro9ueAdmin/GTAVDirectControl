@@ -103,7 +103,7 @@ bool Racer::GetDebugView() {
     return mDebugView;
 }
 
-void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
+void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
                         float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
     handbrake = false;
     throttle = 0.0f;
@@ -237,26 +237,27 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
         float overtakeTrackDist = 10000.0f;
         float npcTrackDist = 10000.0f;
 
-        Vector3 smallestToAi{};
-        Vector3 smallestToOt{};
-        Vector3 smallestToNpc{};
+        Point smallestToAi{};
+        Point smallestToOt{};
+        Point smallestToNpc{};
 
-        for (auto i = 0; i < coords.size(); ++i) {
-            float distanceAi = Distance(aiPosition, coords[i]);
-            float distanceOt = Distance(npcSteerPos, coords[i]);
-            float distanceNpc = Distance(npcCoord, coords[i]);
+        for (auto& point : coords) {
+            Vector3 coord = point.v;
+            float distanceAi = Distance(aiPosition, coord);
+            float distanceOt = Distance(npcSteerPos, coord);
+            float distanceNpc = Distance(npcCoord, coord);
 
             if (distanceAi < aiTrackDist) {
                 aiTrackDist = distanceAi;
-                smallestToAi = coords[i];
+                smallestToAi = point;
             }
             if (distanceOt < overtakeTrackDist) {
                 overtakeTrackDist = distanceOt;
-                smallestToOt = coords[i];
+                smallestToOt = point;
             }
             if (distanceNpc < npcTrackDist) {
                 npcTrackDist = distanceNpc;
-                smallestToNpc = coords[i];
+                smallestToNpc = point;
             }
         }
 
@@ -265,8 +266,10 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
             // ???
             //overtakeTrackDist < npcWidth ||     
             // NPC is on ideal line
-            npcTrackDist < npcWidth) {          
-            nextPositionSteer = npcSteerPos;
+            npcTrackDist < npcWidth) {
+            if (overtakeTrackDist < smallestToOt.w) {
+                nextPositionSteer = npcSteerPos;
+            }
         }
     }
 
@@ -424,7 +427,7 @@ void Racer::getControls(const std::vector<Vector3> &coords, const std::vector<Ve
     }
 }
 
-void Racer::UpdateControl(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents) {
+void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
     if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
         return;
 
@@ -477,7 +480,7 @@ void Racer::updateAux() {
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 }
 
-void Racer::updateStuck(const std::vector<Vector3> &coords) {
+void Racer::updateStuck(const std::vector<Point> &coords) {
     if (coords.size() < 2 || !mActive) {
         mIsStuck = false;
         mStuckStarted = 0;
@@ -520,15 +523,15 @@ Vehicle Racer::GetVehicle() {
     return mVehicle;
 }
 
-float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
+float Racer::getCornerRadius(const std::vector<Point> &coords, int focus) {
     int prev = focus - 1;
     if (prev < 0) prev = static_cast<int>(coords.size()) - 1;
 
     int next = (focus + 1) % coords.size();
 
-    float angle = GetAngleBetween(coords[focus] - coords[next], coords[focus] - coords[prev]);
+    float angle = GetAngleBetween(coords[focus].v - coords[next].v, coords[focus].v - coords[prev].v);
 
-    float length = Distance(coords[prev], coords[focus]);
+    float length = Distance(coords[prev].v, coords[focus].v);
     float radius = (0.5f*length) / cos(angle*0.5f);
 
     if (radius <= 0.0f)
@@ -541,7 +544,7 @@ float Racer::getCornerRadius(const std::vector<Vector3> &coords, int focus) {
     return radius;
 }
 
-Vector3 Racer::getCoord(const std::vector<Vector3>& coords,
+Vector3 Racer::getCoord(const std::vector<Point> &coords,
                         float lookAheadDistance, float actualAngle, std::string &source) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
@@ -556,8 +559,8 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords,
     Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
 
     for (auto i = 0; i < coords.size(); ++i) {
-        float distanceAi = Distance(aiPos, coords[i]);
-        float distanceLa = Distance(aiForward, coords[i]);
+        float distanceAi = Distance(aiPos, coords[i].v);
+        float distanceLa = Distance(aiForward, coords[i].v);
 
         if (distanceAi < smallestToAi) {
             smallestToAi = distanceAi;
@@ -576,8 +579,8 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords,
     // Only consider viable nodes, to not cut the track. 
     // Significant overshoot still makes AI choose closest track node, 
     // so prevent this from happening with walls or something. 
-    int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
-    int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx], coords[(smallestToAiIdx + 1) % coords.size()]));
+    int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
+    int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
 
     if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
@@ -591,7 +594,7 @@ Vector3 Racer::getCoord(const std::vector<Vector3>& coords,
         source = "forwards";
     }
 
-    return coords[returnIndex];
+    return coords[returnIndex].v;
 }
 
 float Racer::getSteeringAngle() {

@@ -15,12 +15,13 @@
 #include "Racer.h"
 #include "PlayerRacer.h"
 #include "Settings.h"
+#include "Point.h"
 
 using json = nlohmann::json;
 
 bool gRecording = false;
 
-std::vector<Vector3> gTrackCoords;
+std::vector<Point> gTrackCoords;
 std::vector<Racer> gRacers;
 std::unique_ptr<PlayerRacer> gPlayerRacer(nullptr);
 
@@ -71,23 +72,35 @@ void UpdateAI(){
 
     if (gRecording) {
         Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
-        float mySpeed = ENTITY::GET_ENTITY_SPEED(playerPed);
-        if (Distance(gTrackCoords.back(), myCoords) > 1.0f/*constrain(map(mySpeed, 1.0f, 20.0f, 1.0f, 2.0f), 0.5f, 20.0f)*/) {
-            gTrackCoords.push_back(myCoords);
+        if (Distance(gTrackCoords.back().v, myCoords) > 1.0f) {
+            gTrackCoords.push_back({{ myCoords }, 5});
         }
     }
 
     if (gSettings.TrackShowDebug || gRecording) {
-        if (gTrackCoords.size()) {
-            drawSphere(gTrackCoords[0], 0.125f, { 255, 255, 0, 255 });
+        if (!gTrackCoords.empty()) {
+            drawSphere(gTrackCoords[0].v, 0.125f, { 255, 255, 0, 255 });
         }
 
         for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
             auto coord = gTrackCoords[idx];
             float screenX, screenY;
-            bool visible = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, &screenX, &screenY);
-            if (visible && idx != gTrackCoords.size() - 1) {
-                drawLine(coord, gTrackCoords[idx + 1], { 255, 255, 0, 255 });
+            bool visibleC = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.v.x, coord.v.y, coord.v.z, &screenX, &screenY);
+
+            if (visibleC) {
+                Vector3 a = gTrackCoords[idx].v;
+                Vector3 b = gTrackCoords[(idx + 1) % gTrackCoords.size()].v;
+                Vector3 c = gTrackCoords[(idx + 2) % gTrackCoords.size()].v;
+
+                Vector3 cwA = GetPerpendicular(a, b, coord.w, true);
+                Vector3 ccwA = GetPerpendicular(a, b, coord.w, false);
+
+                Vector3 cwB = GetPerpendicular(b, c, coord.w, true);
+                Vector3 ccwB = GetPerpendicular(b, c, coord.w, false);
+
+                drawLine(a, b, { 255, 255, 0, 255 });
+                drawLine(cwA, cwB, { 255, 255, 0, 255 });
+                drawLine(ccwA, ccwB, { 255, 255, 0, 255 });
             }
         }
     }
@@ -295,7 +308,7 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startrecord"))) {
         gTrackCoords.clear();
-        gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
+        gTrackCoords.push_back({{ ENTITY::GET_ENTITY_COORDS(playerPed, true) }, 5});
         gRecording = true;
         showNotification("~g~Record started");
     }
@@ -307,7 +320,7 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("cleartrack"))) {
         gTrackCoords.clear();
-        gTrackCoords.push_back(ENTITY::GET_ENTITY_COORDS(playerPed, true));
+        gTrackCoords.push_back({ {ENTITY::GET_ENTITY_COORDS(playerPed, true) }, 5 });
         gRecording = false;
         showNotification("~r~Record cleared");
     }
@@ -324,10 +337,10 @@ void UpdateCheats() {
         json j;
         for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
             j["Data"]["Route"]["Point"].push_back({
-                { "X", gTrackCoords[idx].x },
-                { "Y", gTrackCoords[idx].y },
-                { "Z", gTrackCoords[idx].z },
-                { "Wide", 5 },
+                { "X", gTrackCoords[idx].v.x },
+                { "Y", gTrackCoords[idx].v.y },
+                { "Z", gTrackCoords[idx].v.z },
+                { "Wide", gTrackCoords[idx].w },
                 });
         }
         std::ofstream o("./DirectControl/" + saveFile + ".json");
@@ -361,25 +374,40 @@ void UpdateCheats() {
 
         gTrackCoords.clear();
 
-        for (auto& p : j["Data"]["Route"]["Point"]) {
-            Vector3 v;
+        for (auto& pj : j["Data"]["Route"]["Point"]) {
+            Point p;
+            //Vector3 v;
 
-            if (p["X"].is_string()) {
-                v.x = static_cast<float>(std::atof(p["X"].get<std::string>().c_str()));
-                v.y = static_cast<float>(std::atof(p["Y"].get<std::string>().c_str()));
-                v.z = static_cast<float>(std::atof(p["Z"].get<std::string>().c_str()));
+            if (pj["X"].is_string()) {
+                p.v.x = static_cast<float>(std::atof(pj["X"].get<std::string>().c_str()));
+                p.v.y = static_cast<float>(std::atof(pj["Y"].get<std::string>().c_str()));
+                p.v.z = static_cast<float>(std::atof(pj["Z"].get<std::string>().c_str()));
+                p.w = static_cast<float>(std::atof(pj["Wide"].get<std::string>().c_str()));
             }
             else {
-                v.x = p["X"];
-                v.y = p["Y"];
-                v.z = p["Z"];
+                p.v.x = pj["X"];
+                p.v.y = pj["Y"];
+                p.v.z = pj["Z"];
+                p.w = pj["Wide"];
             }
 
-            gTrackCoords.push_back(v);
+            if (pj.find("Wide") != pj.end()) {
+                if (pj["Wide"].is_string()) {
+                    p.w = static_cast<float>(std::atof(pj["Wide"].get<std::string>().c_str()));
+                }
+                else {
+                    p.w = pj["Wide"];
+                }
+            }
+            else {
+                p.w = 5.0f;
+            }
+
+            gTrackCoords.push_back(p);
         }
         float avgDst = 0.0f;
         for (auto i = 0; i < gTrackCoords.size(); ++i) {
-            avgDst += Distance(gTrackCoords[i], gTrackCoords[(i + 1) % gTrackCoords.size()]);
+            avgDst += Distance(gTrackCoords[i].v, gTrackCoords[(i + 1) % gTrackCoords.size()].v);
         }
         avgDst /= (float)gTrackCoords.size();
         showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));

@@ -78,6 +78,7 @@
     <ClInclude Include="Util\Logger.hpp">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="Point.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">

@@ -2,6 +2,7 @@
 #include <vector>
 #include <inc/types.h>
 #include "Blip.h"
+#include "Point.h"
 
 /**
  * \brief                       The Racer class contains the racer decision-making and the output/input filters.
@@ -48,7 +49,7 @@ public:
      * \param [in] coords       Input list of coordinates of track to follow.
      * \param [in] opponents    Input list of opponents.
      */
-    void UpdateControl(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents);
+    void UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents);
 
     /**
      * \brief                   Get the handle to the racer vehicle.
@@ -96,7 +97,7 @@ protected:
      * \param [out] brake       Brake output.
      * \param [out] steer       Steering output.
      */
-    void getControls(const std::vector<Vector3> &coords, const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
+    void getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
                      bool &handbrake, float &throttle, float &brake, float &steer);
 
     /**
@@ -107,7 +108,7 @@ protected:
      * \param [out] source              Debug info containing which mode was used for choosing the coordinate.
      * \return                          Chosen coordinate from the list.
      */
-    Vector3 getCoord(const std::vector<Vector3> &coords, float lookAheadDistance,
+    Vector3 getCoord(const std::vector<Point> &coords, float lookAheadDistance,
                      float actualAngle, std::string &source);
 
     /**
@@ -116,7 +117,7 @@ protected:
      * \param [in] focus        Index of coordinate.
      * \return                  Angle between track sections at coords[focus] coordinate.
      */
-    float getCornerRadius(const std::vector<Vector3> &coords, int focus);
+    float getCornerRadius(const std::vector<Point> &coords, int focus);
 
 
     /**
@@ -150,7 +151,7 @@ protected:
      */
     void updateAux();
 
-    void updateStuck(const std::vector<Vector3> &coords);
+    void updateStuck(const std::vector<Point> &coords);
 
     const int mStuckThreshold;
 

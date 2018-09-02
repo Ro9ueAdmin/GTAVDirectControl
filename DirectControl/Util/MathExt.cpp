@@ -114,3 +114,17 @@ Vector3 GetModelDimensions(Hash model) {
     GAMEPLAY::GET_MODEL_DIMENSIONS(model, &modelDimMin, &modelDimMax);
     return modelDimMax - modelDimMin;
 }
+
+Vector3 GetPerpendicular(Vector3 a, Vector3 b, float length, bool clockwise) {
+    Vector3 ab = Normalize(b - a);
+    Vector3 abCw{};
+    if (clockwise) {
+        abCw.x = -ab.y;
+        abCw.y = ab.x;
+    }
+    else {
+        abCw.x = ab.y;
+        abCw.y = -ab.x;
+    }
+    return a + abCw * length;
+}

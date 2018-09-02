@@ -175,6 +175,7 @@
     <ClInclude Include="Racer.h" />
     <ClInclude Include="script.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="Point.h" />
     <ClInclude Include="Util\Logger.hpp" />
     <ClInclude Include="Util\MathExt.h" />
     <ClInclude Include="Util\StringFormat.h" />

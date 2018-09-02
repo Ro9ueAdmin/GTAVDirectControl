@@ -55,3 +55,4 @@ Vector3 GetEntityDimensions(Entity e);
 
 Vector3 GetModelDimensions(Hash model);
 
+Vector3 GetPerpendicular(Vector3 a, Vector3 b, float length, bool clockwise);
