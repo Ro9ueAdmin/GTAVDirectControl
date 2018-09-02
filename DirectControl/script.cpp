@@ -182,7 +182,7 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("addai"))) {
         showNotification("Enter number of AIs to add");
-        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 31);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
         if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
             showNotification("Cancelled AI Spawn");
@@ -190,17 +190,14 @@ void UpdateCheats() {
         }
 
         std::string numRacersString = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
-        if (numRacersString.empty())
-            numRacersString = "1";
-        int numRacers;
-        try {
-            numRacers = std::stoi(numRacersString);
-        }
-        catch (const std::invalid_argument&) {
+        int numRacers = 1;
+        int result = sscanf_s(numRacersString.c_str(), "%d", &numRacers);
+
+        if (result != 1)
             numRacers = 1;
-        }
+
         showNotification("Enter AI model (empty = kuruma)");
-        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 64);
+        GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 31);
         while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
         if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
             showNotification("Cancelled AI Spawn");
@@ -257,7 +254,6 @@ void UpdateCheats() {
         for (auto& racer : gRacers) {
             Vehicle v = racer.GetVehicle();
             VEHICLE::SET_VEHICLE_FIXED(v);
-            VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(v);
             // TODO: Use vehicle broken flag?
             //auto address = getScriptHandleBaseAddress(vehicle); 
             //*(BYTE*)(address + 0xD8) &= ~7;
