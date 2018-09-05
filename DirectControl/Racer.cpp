@@ -377,12 +377,13 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             }
 
         }
-        if ((smallestDistanceVelocity + smallestDistanceRotation) / 2.0f > turnTrackClosest.w &&
-            smallestDistanceAI < 2.0f * aiTrackClosest.w) {
+
+        if ((smallestDistanceVelocity + smallestDistanceRotation) / 2.0f > turnTrackClosest.w && 
+            smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 12.0f) {
             dbgTrackLimits = true;
             float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
             throttle *= constrain(map(overshoot, 0.0f, 1.0f, 1.0f, 0.0f), 0.0f, 1.0f);
-            steer *= map(overshoot, 0.0f, 1.0f, 1.0f, 2.0f);
+            turnSteer *= map(overshoot, 0.0f, 1.0f, 1.0f, 2.0f);
         }
     }
 
