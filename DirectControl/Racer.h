@@ -153,6 +153,9 @@ protected:
 
     void updateStuck(const std::vector<Point> &coords);
 
+    Vehicle findClosestVehicle(const std::vector<Vehicle> &vehicles, Vector3 position, float radius);
+    std::vector<Vector3> findOvertakingPoints(Vehicle npc);
+
     const int mStuckThreshold;
 
     Vehicle mVehicle;

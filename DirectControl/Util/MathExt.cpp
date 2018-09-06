@@ -64,6 +64,10 @@ Vector3 operator * (float scale, Vector3 vec) {
     return vec * scale;
 }
 
+bool operator==(Vector3 a, Vector3 b) {
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
 Vector3 Normalize(Vector3 vec) {
     Vector3 vector = {};
     float length = Length(vec);

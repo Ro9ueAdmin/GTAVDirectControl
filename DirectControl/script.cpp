@@ -61,6 +61,7 @@ void UpdateAI(){
 
     std::vector<Vehicle> npcs(1024);
     int npcCount = worldGetAllVehicles(npcs.data(), 1024);
+    npcs.resize(npcCount);
 
     if (gPlayerRacer != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerRacer->GetVehicle(), -1) != playerPed) {
         gPlayerRacer->UpdateControl();
@@ -382,13 +383,13 @@ void UpdateCheats() {
                 p.v.x = static_cast<float>(std::atof(pj["X"].get<std::string>().c_str()));
                 p.v.y = static_cast<float>(std::atof(pj["Y"].get<std::string>().c_str()));
                 p.v.z = static_cast<float>(std::atof(pj["Z"].get<std::string>().c_str()));
-                p.w = static_cast<float>(std::atof(pj["Wide"].get<std::string>().c_str()));
+                //p.w = static_cast<float>(std::atof(pj["Wide"].get<std::string>().c_str()));
             }
             else {
                 p.v.x = pj["X"];
                 p.v.y = pj["Y"];
                 p.v.z = pj["Z"];
-                p.w = pj["Wide"];
+                //p.w = pj["Wide"];
             }
 
             if (pj.find("Wide") != pj.end()) {

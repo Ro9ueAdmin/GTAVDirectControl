@@ -103,6 +103,122 @@ bool Racer::GetDebugView() {
     return mDebugView;
 }
 
+Vehicle Racer::findClosestVehicle(const std::vector<Vehicle> &vehicles, Vector3 position, float radius) {
+    float closest = 10000.0;
+    auto closestIdx = vehicles.size();
+    for (std::vector<int>::size_type i = 0; i < vehicles.size(); ++i) {
+        if (!ENTITY::DOES_ENTITY_EXIST(vehicles[i])) continue;
+        if (vehicles[i] == mVehicle) continue;
+        
+        Vector3 vehPos = ENTITY::GET_ENTITY_COORDS(vehicles[i], 1);
+        float distance = Distance(position, vehPos);
+        if (distance < radius) {
+            if (distance < closest) {
+                closest = Distance(position, vehPos);
+                closestIdx = i;
+            }
+        }
+    }
+    if (closestIdx != vehicles.size()) {
+        return vehicles[closestIdx];
+    }
+    return 0;
+}
+
+std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
+    std::vector<Vector3> overtakePoints(2);
+
+    Vector3 aiDim = GetEntityDimensions(mVehicle);
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+    Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
+    float aiHeading = atan2(aiForward.y, aiForward.x);
+
+    Vector3 npcDim = GetEntityDimensions(npc);
+    Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+    Vector3 npcForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(npc));
+    Vector3 npcToAiVector = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(npc, aiPosition.x, aiPosition.y, aiPosition.z);
+    float npcHeading = atan2(npcForward.y, npcForward.x);
+    float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
+
+    Vector3 npcDirection = Normalize(npcPosition - aiPosition);
+    Vector3 npcRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, npcPosition.x, npcPosition.y, npcPosition.z);
+    float headingAiToNpc = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
+    float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
+    //showText(0.0f, 0.000f, 0.5f, fmt("npc: %d %s", npc, getGxtName(ENTITY::GET_ENTITY_MODEL(npc)).c_str()));
+    //showText(0.0f, 0.025f, 0.5f, fmt("npcD (%.03f, %.03f, %.03f)", npcDirection.x, npcDirection.y, npcDirection.z));
+    //showText(0.0f, 0.050f, 0.5f, fmt("headingAiToNpc = %.03f deg", rad2deg(headingAiToNpc)));
+    //showText(0.0f, 0.075f, 0.5f, fmt("%saiSpeed = %.03f, npcSpeed = %.03f", aiSpeed * 1.25f >= npcSpeed ? "~g~" : "~w~", aiSpeed, npcSpeed));
+
+    if (abs(headingAiToNpc) < deg2rad(90.0f) && aiSpeed >= npcSpeed) {
+
+        // shit now rotates around the heading difference, not the relative angle to the npc.
+        // this keeps the "paralellity" regardless of distance! so smart ikt!
+        float diffHeading = atan2(sin(npcHeading - aiHeading), cos(npcHeading - aiHeading));
+        //float perpRatio = 1.0f - abs((abs(diffHeading) - 1.5708f) / 1.5708f);
+
+        // Keep oval shape around entity to overtake, with the long direction being the direction you're heading
+        float distMultX = npcDim.x * 0.5f + aiDim.x;
+        float distMultY = npcDim.y * 0.5f + aiDim.x;
+
+        // When the "additional offset" is added depends on the heading.
+        // e.g. if parallel, just add in y. if perp, just add in x.
+        // this makes the carrot travel paralelly with the AI
+        float mulX = -(cos(diffHeading + (deg2rad(180.0f))));
+        float mulY = -(sin(diffHeading + (deg2rad(180.0f))));
+
+        // This thing is how far from perpendicular we are. Similar to mulX/mulY?
+        // diffHeading is from -180 to 180. Make abs(it) pivot around 0, so -90 to 90.
+        // then (90 - abs(that))/90 to get ratio. 0 for straight? 1 for perp?
+        // could prolly be simpler
+        float diffHeadingMultiplier = (deg2rad(90.0f) - abs(abs(diffHeading) - deg2rad(90.0f)))/(deg2rad(90.0f));
+
+        float pMult = diffHeadingMultiplier;
+        float nMult = (1.0f - diffHeadingMultiplier);
+
+        float xOff = npcToAiVector.x+ (aiDim.y * 1.5f * mulY);
+        float yOff = npcToAiVector.y+ (aiDim.y * 1.5f * mulX);
+
+        float constrainX = npcDim.x + aiDim.y;
+        float constrainY = npcDim.y + aiDim.y;
+
+        constrainX *= pMult;
+        constrainY *= nMult;
+
+        float xOffset = constrain(xOff * pMult, -constrainX, constrainX);
+        float yOffset = constrain(yOff * nMult, -constrainY, constrainY);
+
+        Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 0.0f);
+        Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading + deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading + deg2rad(90.0f)) + yOffset, 0.0f);
+        Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading - deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading - deg2rad(90.0f)) + yOffset, 0.0f);
+
+
+        overtakePoints[0] = npcDirectionWorldCW;
+        overtakePoints[1] = npcDirectionWorldCCW;
+
+        if (mDebugView) {
+            drawSphere(npcPosition, 0.25f, { 0, 0, 0, 255 });
+            drawLine(npcOffset, npcDirectionWorldCW, { 255, 0, 0, 255 });
+            drawSphere(npcDirectionWorldCW, 0.1250f, { 255, 0, 0, 255 });
+            drawLine(npcOffset, npcDirectionWorldCCW, { 0, 0, 255, 255 });
+            drawSphere(npcDirectionWorldCCW, 0.1250f, { 0, 0, 255, 255 });
+            //drawLine(aiPosition, npcSteerPos, { 255, 0, 255, 255 });
+            //drawSphere(npcSteerPos, 0.1250f, { 255, 0, 255, 255 });
+        }
+
+        return overtakePoints;
+    }
+    return {};
+}
+
+bool ccw(Vector3 A, Vector3 B, Vector3 C) {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+}
+
+// Return true if line segments AB and CD intersect
+bool intersect(Vector3 A, Vector3 B, Vector3 C,Vector3 D) {
+    return ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D);
+}
+
 void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
                         float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
     handbrake = false;
@@ -110,144 +226,24 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     brake = 1.0f;
     steer = 0.0f;
 
-    // TODO: Clean up overtaking
-    // TODO: Clean up track limits
+    // 1. Calculate overtaking points.
+    // 2. Choose whether to go left or right.
+    // 3. Choose whether to follow ideal line or overtaking "line"
+    std::vector<Vector3> overtakePoints;
 
-    Vector3 npcSteerPos{};
-    float npcWidth;
-    Vector3 npcCoord;
-    
-    {
-        Vector3 aiDim = GetEntityDimensions(mVehicle);
-        Vector3 aiNose = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y / 2.0f, 0.0f);
-        Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
+    Vector3 aiDim = GetEntityDimensions(mVehicle);
+    Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
+    float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult * 1.5f;
 
-        // Get NPC closest to front of vehicle
-        float closest = 10000.0;
-        auto closestIdx = opponents.size();
-        for (std::vector<int>::size_type i = 0; i < opponents.size(); ++i) {
-            Vehicle npc = opponents[i];
-            Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
-            if (!ENTITY::DOES_ENTITY_EXIST(npc)) continue;
-            if (npc == mVehicle) continue;
-            if (Distance(aiNose2, npcPosition) > closest) continue;
-            closest = Distance(aiNose2, npcPosition);
-            closestIdx = i;
-        }
+    float searchDistance = aiLookahead > 30.0f ? aiLookahead : 30.0f;
+    // Get NPC closest to front of vehicle
+    Vehicle npc = findClosestVehicle(opponents, aiNose2, searchDistance);
 
-        // Get a coordinate perpendicular to the NPC to overtake/avoid.
-        if (closestIdx != opponents.size()) {
-            Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);;
-            Vector3 aiForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle));
-            float aiHeading = atan2(aiForward.y, aiForward.x);
-            float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult * 1.1f;
-
-            Vehicle npc = opponents[closestIdx];
-            Vector3 npcDim = GetEntityDimensions(npc);
-            Vector3 aiRelativePosition_ = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(npc, aiPosition.x, aiPosition.y, aiPosition.z);
-            Vector3 npcPosition = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f/*npcDim.y / 2.0f*/, 0.0f);//ENTITY::GET_ENTITY_COORDS(npc, 1);
-            Vector3 npcForward = Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(npc));
-            float npcHeading = atan2(npcForward.y, npcForward.x);
-            float npcSpeed = ENTITY::GET_ENTITY_SPEED(npc);
-
-
-            float npcDistance = Distance(aiPosition, npcPosition);
-            float searchDistance = aiLookahead > 30.0f ? aiLookahead : 30.0f;
-            if (npcDistance < searchDistance) {
-
-
-                Vector3 npcDirection = Normalize(npcPosition - aiPosition);
-                Vector3 npcRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, npcPosition.x, npcPosition.y, npcPosition.z);
-                float headingAiToNpc = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
-                Vector3 npcToAIDirection = Normalize(aiPosition - npcPosition);
-                Vector3 aiRelativePosition = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(npc, aiPosition.x, aiPosition.y, aiPosition.z);
-                //float headingNpcToAi = GetAngleBetween(npcForward, npcToAIDirection) * sgn(aiRelativePosition.x);
-
-                float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
-                float searchAngle = constrain(map(npcDistance, npcDim.x * 0.5f + aiDim.x * 0.5f, searchDistance, 90.0f, 45.0f), 45.0f, 120.0f);
-                if (abs(headingAiToNpc) < deg2rad(90.0f) && aiSpeed * 1.25f >= npcSpeed) {
-
-                    // shit now rotates around the heading difference, not the relative angle to the npc.
-                    // this keeps the "paralellity" regardless of distance! so smart ikt!
-                    float diffHeading = atan2(sin(npcHeading - aiHeading), cos(npcHeading - aiHeading));
-                    //float perpRatio = 1.0f - abs((abs(diffHeading) - 1.5708f) / 1.5708f);
-
-                    // Keep oval shape around entity to overtake, with the long direction being the direction you're heading
-                    float distMultX = npcDim.x * 0.5f + aiDim.x;
-                    float distMultY = npcDim.y * 0.5f + aiDim.x;
-
-                    //showText(0.5f, 0.05f, 0.5f, fmt("diffHeadingApproach %.03f", rad2deg(diffHeading + (deg2rad(180.0f)))));
-                    // When the "additional offset" is added depends on the heading.
-                    // e.g. if parallel, just add in y. if perp, just add in x.
-                    // this makes the carrot travel paralelly with the AI
-                    float mulX = -(cos(diffHeading + (deg2rad(180.0f))));
-                    float mulY = -(sin(diffHeading + (deg2rad(180.0f))));
-
-                    //showText(0.5f, 0.10f, 0.5f, fmt("x %.03f", mulX));
-                    //showText(0.5f, 0.15f, 0.5f, fmt("y %.03f", mulY));
-
-                    // This thing is how far from perpendicular we are. Similar to mulX/mulY?
-                    // diffHeading is from -180 to 180. Make abs(it) pivot around 0, so -90 to 90.
-                    // then (90 - abs(that))/90 to get ratio. 0 for straight? 1 for perp?
-                    // could prolly be simpler
-                    float diffHeadingMultiplier = (deg2rad(90.0f) - abs(abs(diffHeading) - deg2rad(90.0f)))/(deg2rad(90.0f));
-
-                    float pMult = diffHeadingMultiplier;
-                    float nMult = (1.0f - diffHeadingMultiplier);
-
-                    // move x/yoffset with AI, then clamp it to reasonable values
-                    // here is the pain! Works for straight angles but fucks up with diagonal/not straights.
-                    // the point to move should stay on the AI and move parallel with the y-distance of my AI.
-                    // actually wait this might be it. Take the relative coord of the NPC based on the AI
-                    // and use the Y???
-                    // TODO: npcRelativePosition_.y??????????
-                    float xOff = aiRelativePosition_.x+ (aiDim.y * 1.5f * mulY);
-                    float yOff = aiRelativePosition_.y+ (aiDim.y * 1.5f * mulX);
-
-                    float constrainX = npcDim.x + aiDim.y;
-                    float constrainY = npcDim.y + aiDim.y;
-
-                    constrainX *= pMult;
-                    constrainY *= nMult;
-
-                    float xOffset = constrain(xOff * pMult, -constrainX, constrainX);// * (0.0f + diffHeadingMultiplier)
-                    float yOffset = constrain(yOff * nMult, -constrainY, constrainY);// * (1.0f - diffHeadingMultiplier)
-                    //showText(0.5f, 0.0f, 0.5f, fmt("diffHeadingMult %.03f", (diffHeadingMultiplier)));
-                    //drawSphere(ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, xOffset, yOffset, 2.0f), 0.5f, { 255, 0, 255, 255 });
-
-                    Vector3 npcOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, 0.0f, 0.0f, 0.0f);
-                    Vector3 npcDirectionWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDistance * sin(diffHeading), npcDistance * cos(diffHeading), 0.0f);
-                    Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading + deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading + deg2rad(90.0f)) + yOffset, 0.0f);
-                    Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading - deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading - deg2rad(90.0f)) + yOffset, 0.0f);
-
-                    float angleCW = GetAngleBetween(aiForward, Normalize(npcDirectionWorldCW - aiNose));
-                    float angleCCW = GetAngleBetween(aiForward, Normalize(npcDirectionWorldCCW - aiNose));
-
-                    if (angleCW < angleCCW) {
-                        npcSteerPos = npcDirectionWorldCW;
-                    }
-                    else {
-                        npcSteerPos = npcDirectionWorldCCW;
-                    }
-
-                    npcWidth = npcDim.x;
-                    npcCoord = npcPosition;
-
-                    if (mDebugView) {
-                        drawSphere(npcPosition, 0.25f, { 0, 0, 0, 255 });
-                        //drawLine(npcOffset, npcDirectionWorld, { 255, 255, 255, 255 });
-                        //drawSphere(npcDirectionWorld, 0.1250f, { 255, 255, 255, 255 });
-                        drawLine(npcOffset, npcDirectionWorldCW, { 255, 0, 0, 255 });
-                        drawSphere(npcDirectionWorldCW, 0.1250f, { 255, 0, 0, 255 });
-                        drawLine(npcOffset, npcDirectionWorldCCW, { 0, 0, 255, 255 });
-                        drawSphere(npcDirectionWorldCCW, 0.1250f, { 0, 0, 255, 255 });
-                        drawLine(aiPosition, npcSteerPos, { 255, 0, 255, 255 });
-                        drawSphere(npcSteerPos, 0.1250f, { 255, 0, 255, 255 });
-                    }
-                }
-            }
-        }
+    // Get a coordinate perpendicular to the NPC to overtake/avoid.
+    if (npc) {
+        overtakePoints = findOvertakingPoints(npc);
     }
+    
 
     if (coords.size() < 2)
         return;
@@ -275,28 +271,39 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
 
-    if (Length(npcSteerPos) > 0.0f) {
+    std::string overtakeReason = "N/A";
+
+    if (overtakePoints.size() == 2) {
+        Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+
         float aiTrackDist = 10000.0f;
-        float overtakeTrackDist = 10000.0f;
         float npcTrackDist = 10000.0f;
+        float overtakeTrackDist0 = 10000.0f;
+        float overtakeTrackDist1 = 10000.0f;
 
         Point smallestToAi{};
-        Point smallestToOt{};
+        Point smallestToOt0{};
+        Point smallestToOt1{};
         Point smallestToNpc{};
 
         for (auto& point : coords) {
             Vector3 coord = point.v;
             float distanceAi = Distance(aiPosition, coord);
-            float distanceOt = Distance(npcSteerPos, coord);
-            float distanceNpc = Distance(npcCoord, coord);
+            float distanceOt0 = Distance(overtakePoints[0], coord);
+            float distanceOt1 = Distance(overtakePoints[1], coord);
+            float distanceNpc = Distance(npcPosition, coord);
 
             if (distanceAi < aiTrackDist) {
                 aiTrackDist = distanceAi;
                 smallestToAi = point;
             }
-            if (distanceOt < overtakeTrackDist) {
-                overtakeTrackDist = distanceOt;
-                smallestToOt = point;
+            if (distanceOt0 < overtakeTrackDist0) {
+                overtakeTrackDist0 = distanceOt0;
+                smallestToOt0 = point;
+            }
+            if (distanceOt1 < overtakeTrackDist1) {
+                overtakeTrackDist1 = distanceOt1;
+                smallestToOt1 = point;
             }
             if (distanceNpc < npcTrackDist) {
                 npcTrackDist = distanceNpc;
@@ -304,20 +311,82 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             }
         }
 
-        //if (// Point for overtaking is closer to ideal line
-        //    aiTrackDist > overtakeTrackDist ||  
-        //    // ???
-        //    //overtakeTrackDist < npcWidth ||     
-        //    // NPC is on ideal line
-        //    npcTrackDist < npcWidth) {
-        //    if (overtakeTrackDist < smallestToOt.w) {
-        //        nextPositionSteer = npcSteerPos;
-        //    }
-        //}
+        Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle) * 1.25f;
+        Vector3 aiNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
+        Vector3 aiNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(aiNextVRot.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(aiNextVRot.z), 0.0f);
 
-        if (Distance(npcSteerPos, aiPosition) < lookAheadSteer * 0.75f && overtakeTrackDist < smallestToOt.w &&
-            (npcTrackDist < npcWidth || aiTrackDist > overtakeTrackDist)) {
-            nextPositionSteer = npcSteerPos;
+        Vector3 npcNextPVel = npcPosition + ENTITY::GET_ENTITY_VELOCITY(npc);
+        Vector3 npcNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(npc);
+        Vector3 npcNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, ENTITY::GET_ENTITY_SPEED(npc)*-sin(npcNextVRot.z), ENTITY::GET_ENTITY_SPEED(npc)*cos(npcNextVRot.z), 0.0f);
+
+
+        bool gonIntersect = intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f,overtakePoints[0], overtakePoints[1]);
+        gonIntersect |= intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, npcPosition, (npcNextPVel + npcNextPRot) * 0.5f);
+
+        if (gonIntersect) {
+            drawSphere(ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, 1.0f), 0.25f, { 255, 0, 255, 255 });
+
+            float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
+            float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
+
+            if (mDebugView) {
+                showText(0.0f, 0.0f, 0.5f, fmt("Angle CW: %.03f", rad2deg(angleCW)));
+                showText(0.0f, 0.025f, 0.5f, fmt("AngleCCW: %.03f", rad2deg(angleCCW)));
+            }
+
+            Vector3 overtakePointAngle;
+            Vector3 overtakePointCenter;
+            Vector3 overtakePoint;
+            if (angleCW < angleCCW) {
+                overtakePointAngle = overtakePoints[0];
+            }
+            else {
+                overtakePointAngle = overtakePoints[1];
+            }
+
+            if (overtakeTrackDist0 < overtakeTrackDist1) {
+                overtakePointCenter = overtakePoints[0];
+            }
+            else {
+                overtakePointCenter = overtakePoints[1];
+            }
+
+            if (overtakePointAngle == overtakePointCenter) {
+                // No conflict, commit!
+                overtakeReason = "Both: All clear!";
+                overtakePoint = overtakePointAngle;
+            }
+            else {
+                // Conflict! Figure out which is more harmful and choose the alternative!
+                // Account for motion/reaction by extending rear
+                Vector3 npcDim = GetEntityDimensions(npc);
+                Vector3 offWLeftRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
+                Vector3 offWLeftFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
+                Vector3 offWRightRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
+                Vector3 offWRightFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
+
+                drawLine(offWLeftRear, offWLeftFront, { 255, 0, 0, 255 });
+                drawLine(offWLeftFront, offWRightFront, { 255, 0, 0, 255 });
+                drawLine(offWRightFront, offWRightRear, { 255, 0, 0, 255 });
+                drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
+
+                // Choose closest to track center when angle is less desirable (crosses the vehicle to overtake)
+                if (intersect(aiPosition, overtakePointAngle, offWLeftRear, offWRightFront) ||
+                    intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear)) {
+                    overtakePoint = overtakePointCenter;
+                    overtakeReason = "Track center";
+                }
+                else {
+                    overtakePoint = overtakePointAngle;
+                    overtakeReason = "Angle";
+
+                }
+            }
+
+            if (Distance(overtakePoint, aiPosition) < aiLookahead) {
+                nextPositionSteer = overtakePoint;
+            }
+
         }
     }
 
@@ -375,7 +444,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         dbgSpinCountersteer = steerMult > 1.0f;
     }
 
-    if (Length(npcSteerPos) == 0.0f) {
+    if (overtakePoints.size() == 0) {
         handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
     }
 
@@ -490,10 +559,12 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
 
         // spinout ratio
-        drawLine(aiPosition, nextPositionVelocity, white);
-        drawSphere(nextPositionVelocity, 0.25f, white);
-        drawLine(aiPosition, turnWorld, yellow);
-        drawSphere(turnWorld, 0.25f, yellow);
+        //drawLine(aiPosition, nextPositionVelocity, white);
+        //drawSphere(nextPositionVelocity, 0.25f, white);
+        //drawLine(aiPosition, turnWorld, yellow);
+        //drawSphere(turnWorld, 0.25f, yellow);
+        drawLine(aiPosition, (nextPositionVelocity + turnWorld) * 0.5f, white);
+        drawSphere((nextPositionVelocity + turnWorld) * 0.5f, 0.25f, white);
 
         // Debug text
         if (gSettings.AIShowDebugText) {
@@ -506,7 +577,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
                 fmt("LABrake: %s", dbgBrakeSrc.c_str()),
                 fmt("LASteer: %s", dbgSteerSrc.c_str()),
-                fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~")
+                fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~"),
+                fmt("OT: %s", overtakeReason.c_str())
             });
         }
     }
