@@ -638,7 +638,7 @@ void Racer::updateAux() {
 }
 
 void Racer::updateStuck(const std::vector<Point> &coords) {
-    if (coords.size() < 2 || !mActive) {
+    if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
         mIsStuck = false;
         mStuckStarted = 0;
         return;
@@ -678,27 +678,6 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
 
 Vehicle Racer::GetVehicle() {
     return mVehicle;
-}
-
-float Racer::getCornerRadius(const std::vector<Point> &coords, int focus) {
-    int prev = focus - 1;
-    if (prev < 0) prev = static_cast<int>(coords.size()) - 1;
-
-    int next = (focus + 1) % coords.size();
-
-    float angle = GetAngleBetween(coords[focus].v - coords[next].v, coords[focus].v - coords[prev].v);
-
-    float length = Distance(coords[prev].v, coords[focus].v);
-    float radius = (0.5f*length) / cos(angle*0.5f);
-
-    if (radius <= 0.0f)
-        radius = 10000.0f;
-    else if (radius > 10000.0f)
-        radius = 10000.0f;
-    else if (std::isnan(radius))
-        radius = 10000.0f;
-
-    return radius;
 }
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,

@@ -112,15 +112,6 @@ protected:
                      float actualAngle, std::string &source);
 
     /**
-     * \brief                   Calculate corner radius at the selected coordinate.
-     * \param [in] coords       List of track coordinates.
-     * \param [in] focus        Index of coordinate.
-     * \return                  Angle between track sections at coords[focus] coordinate.
-     */
-    float getCornerRadius(const std::vector<Point> &coords, int focus);
-
-
-    /**
      * \brief                   Calculate average angle of the steered wheels.
      * \return                  Current steering angle.
      */
@@ -151,9 +142,29 @@ protected:
      */
     void updateAux();
 
+    /**
+     * \brief                   Update stuck detection timer.
+     * \param [in] coords       Used to not unstuck while there's no track.
+     */
     void updateStuck(const std::vector<Point> &coords);
 
+    /**
+     * \brief                   Find vehicle closest to position, excluding itself.
+     * \param [in] vehicles     List of vehicles to check.
+     * \param [in] position     Position to check around. 
+     * \param [in] radius       Max radius to consider.
+     * \return                  The closest vehicle. 0 if none is found.
+     */
     Vehicle findClosestVehicle(const std::vector<Vehicle> &vehicles, Vector3 position, float radius);
+
+
+    /**
+     * \brief                   Find two points to consider for overtaking based on the NPC to overtake.
+     *                          Points are perpendicular to the AI-NPC vector, distance and offset is
+     *                          based on relative positions and vehicle dimensions.
+     * \param [in] npc          Vehicle to find overtaking points for.
+     * \return                  Two points that can be used for overtaking.
+     */
     std::vector<Vector3> findOvertakingPoints(Vehicle npc);
 
     const int mStuckThreshold;
