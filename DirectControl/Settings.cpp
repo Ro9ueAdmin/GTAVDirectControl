@@ -20,15 +20,15 @@ void Settings::SetOptimalDefaults() {
     AILookaheadThrottleMinDistance = 15.0f;
     AILookaheadBrakeSpeedMult = 2.5f;
     AILookaheadBrakeMinDistance = 15.0f;
-    AILookaheadSteerSpeedMult = 1.8f;
-    AILookaheadSteerMinDistance = 2.0f;
+    AILookaheadSteerSpeedMult = 1.2f;
+    AILookaheadSteerMinDistance = 15.0f;
 
-    AISteerMult = 1.33f;
+    AISteerMult = 1.5f;
 
     AICountersteerIncreaseStartAngle = 0.0f;
-    AICountersteerIncreaseEndAngle = 45.0f;
+    AICountersteerIncreaseEndAngle = 90.0f;
 
-    AIThrottleDecreaseStartAngle = 22.5f;
+    AIThrottleDecreaseStartAngle = 45.0f;
     AIThrottleDecreaseEndAngle = 90.0f;
 
     AIOversteerDetectionAngle = 10.0f;
@@ -37,7 +37,7 @@ void Settings::SetOptimalDefaults() {
     AIBrakePointDistanceBrakeMult = 0.75f;
 
     AIBrakePointHeadingMinAngle = 30.0f;
-    AIBrakePointHeadingMaxAngle = 45.0f;
+    AIBrakePointHeadingMaxAngle = 52.5f;
     AIBrakePointHeadingMinSpeed = 20.0f;
     AIBrakePointHeadingMaxSpeed = 40.0f;
 
