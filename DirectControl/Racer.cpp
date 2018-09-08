@@ -145,7 +145,8 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
     float headingAiToNpc = GetAngleBetween(aiForward, npcDirection) * sgn(npcRelativePosition.x);
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
-    if (abs(headingAiToNpc) < deg2rad(90.0f) && aiSpeed >= npcSpeed) {
+    // Add a +5% margin so same-speed cars evade each other.
+    if (abs(headingAiToNpc) < deg2rad(90.0f) && aiSpeed * 1.05f >= npcSpeed) {
         float diffHeading = atan2(sin(npcHeading - aiHeading), cos(npcHeading - aiHeading));
 
         // Make oval shape around entity to overtake, based on dimensions.
@@ -267,10 +268,12 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
             Vector3 offWRightRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
             Vector3 offWRightFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
 
-            drawLine(offWLeftRear, offWLeftFront, { 255, 0, 0, 255 });
-            drawLine(offWLeftFront, offWRightFront, { 255, 0, 0, 255 });
-            drawLine(offWRightFront, offWRightRear, { 255, 0, 0, 255 });
-            drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
+            if (mDebugView) {
+                drawLine(offWLeftRear, offWLeftFront, { 255, 0, 0, 255 });
+                drawLine(offWLeftFront, offWRightFront, { 255, 0, 0, 255 });
+                drawLine(offWRightFront, offWRightRear, { 255, 0, 0, 255 });
+                drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
+            }
 
             // Choose closest to track center when angle is less desirable (crosses the vehicle to overtake)
             if (Intersect(aiPosition, overtakePointAngle, offWLeftRear, offWRightFront) ||
@@ -327,27 +330,26 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     std::string dbgThrottleSrc;
     std::string dbgBrakeSrc;
     std::string dbgSteerSrc;
+    std::string dbgOvertakeSrc = "N/A";
 
     Vector3 aiVelocity = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
-    Vector3 aiForward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0, 5.0f, 0.0f);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+    Vector3 aiForward = aiPosition + ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
+    float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
-    float lookAheadThrottle = constrain(gSettings.AILookaheadThrottleSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadSteer = constrain(gSettings.AILookaheadSteerSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadSteerMinDistance, 9999.0f);
-    float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * ENTITY::GET_ENTITY_SPEED(mVehicle), gSettings.AILookaheadBrakeMinDistance, 9999.0f);
+    float lookAheadThrottle = constrain(gSettings.AILookaheadThrottleSpeedMult * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
+    float lookAheadSteer =  constrain(gSettings.AILookaheadSteerSpeedMult * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
+    float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
-
-    std::string overtakeReason = "N/A";
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
     if (overtakePoints.size() == 2) {
-        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, overtakeReason);
+        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgOvertakeSrc);
         if (Length(overtakePoint) > 0.0f)
             nextPositionSteer = overtakePoint;
     }
-
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
     Vector3 nextVectorThrottle = Normalize(nextPositionThrottle - aiPosition);
     Vector3 nextVectorSteer = Normalize(nextPositionSteer - aiPosition);
@@ -374,8 +376,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float distPerpBrake = abs((abs(turnBrake) - 1.5708f) / 1.5708f);
 
     float steerMult = gSettings.AISteerMult;
-
-    float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
     throttle *= map(distPerpThrottle, 0.0f, 1.0f, 0.5f, 1.0f);
@@ -530,7 +530,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 fmt("LABrake: %s", dbgBrakeSrc.c_str()),
                 fmt("LASteer: %s", dbgSteerSrc.c_str()),
                 fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~"),
-                fmt("OT: %s", overtakeReason.c_str())
+                fmt("OT: %s", dbgOvertakeSrc.c_str())
             });
         }
     }
