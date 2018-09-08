@@ -105,6 +105,14 @@ float GetAngleBetween(float h1, float h2, float separation) {
     return separation;
 }
 
+bool ccw(Vector3 A, Vector3 B, Vector3 C) {
+    return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+}
+
+bool Intersect(Vector3 A, Vector3 B, Vector3 C, Vector3 D) {
+    return ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D);
+}
+
 int GetRand(int min, int mod) {
     return min + (rand() % mod);
 }

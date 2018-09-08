@@ -30,6 +30,9 @@ Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forwa
 float GetAngleBetween(Vector3 a, Vector3 b);
 float GetAngleBetween(float h1, float h2, float separation);
 
+// Return true if line segments AB and CD intersect
+bool Intersect(Vector3 A, Vector3 B, Vector3 C, Vector3 D);
+
 inline float rad2deg(float rad) {
     return (rad*(180.0f / 3.14159265358979323846264338327950288f));
 }
