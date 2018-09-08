@@ -199,6 +199,8 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     float npcTrackDist = 10000.0f;
     float overtakeTrackDist0 = 10000.0f;
     float overtakeTrackDist1 = 10000.0f;
+    float overtakeTrackWidth0 = 0.0f;
+    float overtakeTrackWidth1 = 0.0f;
 
     for (auto& point : coords) {
         Vector3 coord = point.v;
@@ -212,9 +214,11 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         }
         if (distanceOt0 < overtakeTrackDist0) {
             overtakeTrackDist0 = distanceOt0;
+            overtakeTrackWidth0 = point.w;
         }
         if (distanceOt1 < overtakeTrackDist1) {
             overtakeTrackDist1 = distanceOt1;
+            overtakeTrackWidth1 = point.w;
         }
         if (distanceNpc < npcTrackDist) {
             npcTrackDist = distanceNpc;
@@ -237,14 +241,21 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
         float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
 
+        float overtakePointAngleDist;
+        float overtakePointAngleWidth;
+
         Vector3 overtakePointAngle;
         Vector3 overtakePointCenter;
         Vector3 overtakePoint;
         if (angleCW < angleCCW) {
             overtakePointAngle = overtakePoints[0];
+            overtakePointAngleDist = overtakeTrackDist0;
+            overtakePointAngleWidth = overtakeTrackWidth0;
         }
         else {
             overtakePointAngle = overtakePoints[1];
+            overtakePointAngleDist = overtakeTrackDist1;
+            overtakePointAngleWidth = overtakeTrackWidth1;
         }
 
         if (overtakeTrackDist0 < overtakeTrackDist1) {
@@ -275,9 +286,11 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
                 drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
             }
 
-            // Choose closest to track center when angle is less desirable (crosses the vehicle to overtake)
+            // Choose closest to track center when angle is less desirable
+            // crosses the vehicle to overtake, or out of track
             if (Intersect(aiPosition, overtakePointAngle, offWLeftRear, offWRightFront) ||
-                Intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear)) {
+                Intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear) ||
+                overtakePointAngleDist > overtakePointAngleWidth) {
                 overtakePoint = overtakePointCenter;
                 overtakeReason = "Track center";
             }
