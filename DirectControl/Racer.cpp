@@ -190,6 +190,109 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
     return {};
 }
 
+Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc, std::string &overtakeReason) {
+    Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+
+    float aiTrackDist = 10000.0f;
+    float npcTrackDist = 10000.0f;
+    float overtakeTrackDist0 = 10000.0f;
+    float overtakeTrackDist1 = 10000.0f;
+
+    for (auto& point : coords) {
+        Vector3 coord = point.v;
+        float distanceAi = Distance(aiPosition, coord);
+        float distanceOt0 = Distance(overtakePoints[0], coord);
+        float distanceOt1 = Distance(overtakePoints[1], coord);
+        float distanceNpc = Distance(npcPosition, coord);
+
+        if (distanceAi < aiTrackDist) {
+            aiTrackDist = distanceAi;
+        }
+        if (distanceOt0 < overtakeTrackDist0) {
+            overtakeTrackDist0 = distanceOt0;
+        }
+        if (distanceOt1 < overtakeTrackDist1) {
+            overtakeTrackDist1 = distanceOt1;
+        }
+        if (distanceNpc < npcTrackDist) {
+            npcTrackDist = distanceNpc;
+        }
+    }
+
+    Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle) * 1.25f;
+    Vector3 aiNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
+    Vector3 aiNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(aiNextVRot.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(aiNextVRot.z), 0.0f);
+
+    Vector3 npcNextPVel = npcPosition + ENTITY::GET_ENTITY_VELOCITY(npc);
+    Vector3 npcNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(npc);
+    Vector3 npcNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, ENTITY::GET_ENTITY_SPEED(npc)*-sin(npcNextVRot.z), ENTITY::GET_ENTITY_SPEED(npc)*cos(npcNextVRot.z), 0.0f);
+
+
+    bool intersect = Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f,overtakePoints[0], overtakePoints[1]);
+    intersect |= Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, npcPosition, (npcNextPVel + npcNextPRot) * 0.5f);
+
+    if (intersect) {
+        float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
+        float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
+
+        Vector3 overtakePointAngle;
+        Vector3 overtakePointCenter;
+        Vector3 overtakePoint;
+        if (angleCW < angleCCW) {
+            overtakePointAngle = overtakePoints[0];
+        }
+        else {
+            overtakePointAngle = overtakePoints[1];
+        }
+
+        if (overtakeTrackDist0 < overtakeTrackDist1) {
+            overtakePointCenter = overtakePoints[0];
+        }
+        else {
+            overtakePointCenter = overtakePoints[1];
+        }
+
+        if (overtakePointAngle == overtakePointCenter) {
+            // No conflict, commit!
+            overtakeReason = "Both: All clear!";
+            overtakePoint = overtakePointAngle;
+        }
+        else {
+            // Conflict! Figure out which is more harmful and choose the alternative!
+            // Account for motion/reaction by extending rear
+            Vector3 npcDim = GetEntityDimensions(npc);
+            Vector3 offWLeftRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
+            Vector3 offWLeftFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
+            Vector3 offWRightRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
+            Vector3 offWRightFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
+
+            drawLine(offWLeftRear, offWLeftFront, { 255, 0, 0, 255 });
+            drawLine(offWLeftFront, offWRightFront, { 255, 0, 0, 255 });
+            drawLine(offWRightFront, offWRightRear, { 255, 0, 0, 255 });
+            drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
+
+            // Choose closest to track center when angle is less desirable (crosses the vehicle to overtake)
+            if (Intersect(aiPosition, overtakePointAngle, offWLeftRear, offWRightFront) ||
+                Intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear)) {
+                overtakePoint = overtakePointCenter;
+                overtakeReason = "Track center";
+            }
+            else {
+                overtakePoint = overtakePointAngle;
+                overtakeReason = "Angle";
+            }
+        }
+
+        if (Distance(overtakePoint, aiPosition) < aiLookahead) {
+            return overtakePoint;
+        }
+
+    }
+
+    return {};
+}
+
 void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
                         float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
     handbrake = false;
@@ -197,11 +300,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     brake = 1.0f;
     steer = 0.0f;
 
-    // 1. Calculate overtaking points.
-    // 2. Choose whether to go left or right.
-    // 3. Choose whether to follow ideal line or overtaking "line"
     std::vector<Vector3> overtakePoints;
-
     Vector3 aiDim = GetEntityDimensions(mVehicle);
     Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
     float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult * 1.5f;
@@ -211,11 +310,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     Vehicle npc = findClosestVehicle(opponents, aiNose2, searchDistance);
 
     // Get a coordinate perpendicular to the NPC to overtake/avoid.
-    if (npc) {
+    if (npc)
         overtakePoints = findOvertakingPoints(npc);
-    }
     
-
     if (coords.size() < 2)
         return;
 
@@ -245,120 +342,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     std::string overtakeReason = "N/A";
 
     if (overtakePoints.size() == 2) {
-        Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
-
-        float aiTrackDist = 10000.0f;
-        float npcTrackDist = 10000.0f;
-        float overtakeTrackDist0 = 10000.0f;
-        float overtakeTrackDist1 = 10000.0f;
-
-        Point smallestToAi{};
-        Point smallestToOt0{};
-        Point smallestToOt1{};
-        Point smallestToNpc{};
-
-        for (auto& point : coords) {
-            Vector3 coord = point.v;
-            float distanceAi = Distance(aiPosition, coord);
-            float distanceOt0 = Distance(overtakePoints[0], coord);
-            float distanceOt1 = Distance(overtakePoints[1], coord);
-            float distanceNpc = Distance(npcPosition, coord);
-
-            if (distanceAi < aiTrackDist) {
-                aiTrackDist = distanceAi;
-                smallestToAi = point;
-            }
-            if (distanceOt0 < overtakeTrackDist0) {
-                overtakeTrackDist0 = distanceOt0;
-                smallestToOt0 = point;
-            }
-            if (distanceOt1 < overtakeTrackDist1) {
-                overtakeTrackDist1 = distanceOt1;
-                smallestToOt1 = point;
-            }
-            if (distanceNpc < npcTrackDist) {
-                npcTrackDist = distanceNpc;
-                smallestToNpc = point;
-            }
-        }
-
-        Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle) * 1.25f;
-        Vector3 aiNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
-        Vector3 aiNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(aiNextVRot.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(aiNextVRot.z), 0.0f);
-
-        Vector3 npcNextPVel = npcPosition + ENTITY::GET_ENTITY_VELOCITY(npc);
-        Vector3 npcNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(npc);
-        Vector3 npcNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, ENTITY::GET_ENTITY_SPEED(npc)*-sin(npcNextVRot.z), ENTITY::GET_ENTITY_SPEED(npc)*cos(npcNextVRot.z), 0.0f);
-
-
-        bool gonIntersect = Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f,overtakePoints[0], overtakePoints[1]);
-        gonIntersect |= Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, npcPosition, (npcNextPVel + npcNextPRot) * 0.5f);
-
-        if (gonIntersect) {
-            drawSphere(ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, 1.0f), 0.25f, { 255, 0, 255, 255 });
-
-            float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
-            float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
-
-            if (mDebugView) {
-                showText(0.0f, 0.0f, 0.5f, fmt("Angle CW: %.03f", rad2deg(angleCW)));
-                showText(0.0f, 0.025f, 0.5f, fmt("AngleCCW: %.03f", rad2deg(angleCCW)));
-            }
-
-            Vector3 overtakePointAngle;
-            Vector3 overtakePointCenter;
-            Vector3 overtakePoint;
-            if (angleCW < angleCCW) {
-                overtakePointAngle = overtakePoints[0];
-            }
-            else {
-                overtakePointAngle = overtakePoints[1];
-            }
-
-            if (overtakeTrackDist0 < overtakeTrackDist1) {
-                overtakePointCenter = overtakePoints[0];
-            }
-            else {
-                overtakePointCenter = overtakePoints[1];
-            }
-
-            if (overtakePointAngle == overtakePointCenter) {
-                // No conflict, commit!
-                overtakeReason = "Both: All clear!";
-                overtakePoint = overtakePointAngle;
-            }
-            else {
-                // Conflict! Figure out which is more harmful and choose the alternative!
-                // Account for motion/reaction by extending rear
-                Vector3 npcDim = GetEntityDimensions(npc);
-                Vector3 offWLeftRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
-                Vector3 offWLeftFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, -npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
-                Vector3 offWRightRear = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, -npcDim.y * 0.75f, 0.0f);
-                Vector3 offWRightFront = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, npcDim.x * 0.5f, npcDim.y * 0.5f, 0.0f);
-
-                drawLine(offWLeftRear, offWLeftFront, { 255, 0, 0, 255 });
-                drawLine(offWLeftFront, offWRightFront, { 255, 0, 0, 255 });
-                drawLine(offWRightFront, offWRightRear, { 255, 0, 0, 255 });
-                drawLine(offWRightRear, offWLeftRear, { 255, 0, 0, 255 });
-
-                // Choose closest to track center when angle is less desirable (crosses the vehicle to overtake)
-                if (Intersect(aiPosition, overtakePointAngle, offWLeftRear, offWRightFront) ||
-                    Intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear)) {
-                    overtakePoint = overtakePointCenter;
-                    overtakeReason = "Track center";
-                }
-                else {
-                    overtakePoint = overtakePointAngle;
-                    overtakeReason = "Angle";
-
-                }
-            }
-
-            if (Distance(overtakePoint, aiPosition) < aiLookahead) {
-                nextPositionSteer = overtakePoint;
-            }
-
-        }
+        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, overtakeReason);
+        if (Length(overtakePoint) > 0.0f)
+            nextPositionSteer = overtakePoint;
     }
 
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
@@ -439,7 +425,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
-
+    // Track limits
     {
         float smallestDistanceVelocity = 10000.0f;
         float smallestDistanceRotation = 10000.0f;
@@ -529,11 +515,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             drawChevron(up, dir, rot, 1.0f, throttle, c);
         }
 
-        // spinout ratio
-        //drawLine(aiPosition, nextPositionVelocity, white);
-        //drawSphere(nextPositionVelocity, 0.25f, white);
-        //drawLine(aiPosition, turnWorld, yellow);
-        //drawSphere(turnWorld, 0.25f, yellow);
         drawLine(aiPosition, (nextPositionVelocity + turnWorld) * 0.5f, white);
         drawSphere((nextPositionVelocity + turnWorld) * 0.5f, 0.25f, white);
 

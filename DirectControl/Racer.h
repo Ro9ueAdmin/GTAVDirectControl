@@ -167,6 +167,18 @@ protected:
      */
     std::vector<Vector3> findOvertakingPoints(Vehicle npc);
 
+    /**
+     * \brief                       Choose a point to overtake with. AI aims at overtake position when
+     *                              travel paths intersect or AI travel path and NPC safe width intersect.
+     * \param [in] coords           List of track coords
+     * \param [in] overtakePoints   List of overtaking points to consider (vector, 2 points)
+     * \param [in] aiLookahead      Lookahead to start overtaking
+     * \param [in] npc              NPC to overtake
+     * \param [out] overtakeReason  Logic source of overtake point
+     */
+    Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
+                                std::string &overtakeReason);
+
     const int mStuckThreshold;
 
     Vehicle mVehicle;
