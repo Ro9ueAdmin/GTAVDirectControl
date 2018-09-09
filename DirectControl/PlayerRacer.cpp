@@ -43,7 +43,7 @@ void PlayerRacer::UpdateControl() {
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, 20.0f * GAMEPLAY::GET_FRAME_TIME()));
+    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, (1.0f / 0.05f) * GAMEPLAY::GET_FRAME_TIME()));
     gExt.SetHandbrake(mVehicle, handbrake);
 
     if (mDebugView) {
