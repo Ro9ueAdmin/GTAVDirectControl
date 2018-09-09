@@ -91,6 +91,12 @@ void Settings::ReadSettings(const char *file) {
 
     AIBrakePointRadiusMaxSpeed =        ini.GetDoubleValue(paramSection, "AIBrakePointRadiusMaxSpeed");
     AIBrakePointRadiusMaxRadius =       ini.GetDoubleValue(paramSection, "AIBrakePointRadiusMaxRadius");
+
+    AIElevationDropThreshold =          ini.GetDoubleValue(paramSection, "AIElevationDropThreshold");
+    AIElevationMin =                    ini.GetDoubleValue(paramSection, "AIElevationMin");
+    AIElevationMax =                    ini.GetDoubleValue(paramSection, "AIElevationMax");
+    AIElevationDangerMin =              ini.GetDoubleValue(paramSection, "AIElevationDangerMin");
+    AIElevationDangerMax =              ini.GetDoubleValue(paramSection, "AIElevationDangerMax");
     gLogger.Write(INFO, "Load settings success");
 }
 

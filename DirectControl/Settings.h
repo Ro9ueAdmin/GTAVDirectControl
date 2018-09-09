@@ -43,7 +43,11 @@ public:
     float AIBrakePointRadiusMaxSpeed;           // Speed radius is considered for
     float AIBrakePointRadiusMaxRadius;          // Considered radius at max speed
 
-
+    float AIElevationDropThreshold;
+    float AIElevationMin;
+    float AIElevationMax;
+    float AIElevationDangerMin;
+    float AIElevationDangerMax;
 };
 
 extern Settings gSettings;

@@ -473,6 +473,29 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
+    // TODO: Clean up, consider braking earlier?
+    // Stop yeeting off cliffs
+    float aiGndZ = 0.0f;
+    float laGndZ = 0.0f;
+    Vector3 laPhy = nextPositionBrake;// (nextPositionVelocity + turnWorld) * 0.5f;
+    bool aiGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(aiPosition.x, aiPosition.y, aiPosition.z, &aiGndZ, 0);
+    bool laGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(laPhy.x, laPhy.y, laPhy.z, &laGndZ, 0);
+
+    if (aiGnd && laGnd) {
+        float drop = aiGndZ - laGndZ;
+        float dropDangerMult = map(drop, gSettings.AIElevationMin, gSettings.AIElevationMax, gSettings.AIElevationDangerMin, gSettings.AIElevationDangerMax);
+
+        if (drop > gSettings.AIElevationDropThreshold) {
+            //throttle *= 1.0f / dropDangerMult;
+            maxBrake *= dropDangerMult;
+            //turnSteer *= dropDangerMult;
+
+            showText(0.0f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
+            showText(0.0f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
+            showText(0.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
+            showText(0.0f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
+        }
+    }
 
     throttle = constrain(throttle, 0.0f, 1.0f);
     brake = constrain(maxBrake, 0.0f, 1.0f);
