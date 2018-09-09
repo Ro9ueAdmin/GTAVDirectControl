@@ -572,6 +572,27 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     }
 }
 
+// TODO: Make proper Debug thing
+void drawInputWheelInfo(float t, float b, float s) {
+    float PedalInfoX = 0.970000;
+    float PedalInfoY = 0.870000;
+    float PedalInfoH = 0.100000;
+    float PedalInfoW = 0.040000;
+    float PedalInfoPadX = 0.000000;
+    float PedalInfoPadY = 0.000000;
+
+    float barWidth = PedalInfoW / 3.0f;
+    float barYBase = (PedalInfoY + PedalInfoH * 0.5f);
+
+    s *= 0.5f;
+    s += 0.5f;
+
+    GRAPHICS::DRAW_RECT(PedalInfoX, PedalInfoY, 3.0f * barWidth + PedalInfoPadX, PedalInfoH + PedalInfoPadY, 0, 0, 0, 92);
+    GRAPHICS::DRAW_RECT(PedalInfoX - 1.0f*barWidth, barYBase - t*PedalInfoH*0.5f, barWidth, t*PedalInfoH, 0, 255, 0, 255);
+    GRAPHICS::DRAW_RECT(PedalInfoX + 0.0f*barWidth, barYBase - b*PedalInfoH*0.5f, barWidth, b*PedalInfoH, 255, 0, 0, 255);
+    GRAPHICS::DRAW_RECT(PedalInfoX + 1.0f*barWidth, barYBase - s*PedalInfoH*0.5f, barWidth, s*PedalInfoH, 0, 0, 255, 255);
+}
+
 void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
     if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
         return;
@@ -616,6 +637,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, (1.0f / 0.05f) * GAMEPLAY::GET_FRAME_TIME()));
     gExt.SetHandbrake(mVehicle, handbrake);
+    drawInputWheelInfo(gExt.GetThrottleP(mVehicle), gExt.GetBrakeP(mVehicle), gExt.GetSteeringAngle(mVehicle)/gExt.GetMaxSteeringAngle(mVehicle));
 }
 
 void Racer::updateAux() {
