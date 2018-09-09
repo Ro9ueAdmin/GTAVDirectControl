@@ -402,12 +402,37 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float csMult = constrain(map(angle, deg2rad(gSettings.AICountersteerIncreaseStartAngle), deg2rad(gSettings.AICountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
     float spinoutMult = constrain(map(angle, deg2rad(gSettings.AIThrottleDecreaseStartAngle), deg2rad(gSettings.AIThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
 
+    // TODO: Clean up? Check for use outside offroad slippery driving
+    // Yank the handbrake when understeering?
+    Vector3 velocityWorld = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
+    Vector3 positionWorld = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+    Vector3 travelWorld = velocityWorld + positionWorld;
+    Vector3 travelRelative = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, travelWorld.x, travelWorld.y, travelWorld.z);
+
+    bool understeering = false;
+    float steeringAngleRelX = ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(actualAngle);
+    Vector3 turnRelative = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, turnWorld.x, turnWorld.y, turnWorld.z);
+    float turnRelativeNormX = (travelRelative.x + turnRelative.x) / 2.0f;
+    float understeer = sgn(travelRelative.x - steeringAngleRelX) * (turnRelativeNormX - steeringAngleRelX);
+    if (steeringAngleRelX > turnRelativeNormX && turnRelativeNormX > travelRelative.x ||
+        steeringAngleRelX < turnRelativeNormX && turnRelativeNormX < travelRelative.x) {
+        understeering = true;
+    }
+    if (understeering && abs(turnSteer * steerMult) > 1.0f && aiSpeed > 10.0f) {
+        handbrake = true;
+    }
+    std::string dbgUndersteerColor = "";
+    if (understeering) dbgUndersteerColor = "~b~";
+    if (understeering && handbrake) dbgUndersteerColor = "~r~";
+
+    showText(0.33f, 0.0f, 0.5f, fmt("%sUndersteer @ %.03f", dbgUndersteerColor, understeer));
+
     // start oversteer detect
     float angleOverSteer = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
     if (isnan(angleOverSteer))
         angleOverSteer = 0.0;
 
-    if (angleOverSteer > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
+    if (!understeering && angleOverSteer > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
         throttle *= spinoutMult;
         steerMult *= csMult;
         dbgSpinThrottle = spinoutMult < 1.0f;
@@ -415,7 +440,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     }
 
     if (overtakePoints.size() == 0) {
-        handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
+        //handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
     }
 
     float maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
