@@ -142,6 +142,12 @@ protected:
      */
     void updateAux();
 
+
+    /**
+     * \brief                   Reset the stuck counters
+     */
+    void resetStuckState(bool resetStuckCount);
+
     /**
      * \brief                   Update stuck detection timer.
      * \param [in] coords       Used to not unstuck while there's no track.
@@ -179,16 +185,20 @@ protected:
     Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
                                 std::string &overtakeReason);
 
-    const int mStuckThreshold;
+    Vehicle mVehicle;               // The vehicle the racer AI uses.
+    std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.
+    bool mActive;                   // Active state.
+    bool mDebugView;                // Debug information display state.
 
-    Vehicle mVehicle;
-    std::unique_ptr<BlipX> mBlip;
-    bool mActive;
-    bool mDebugView;
+    DWORD mAuxPeriod;               // Period to check update auxiliaries. Randomized every period.
+    DWORD mAuxPrevTick;             // Previous time auxiliaries were updated.
 
-    DWORD mAuxPeriod;
-    DWORD mAuxPrevTick;
+    const int mStuckTimeThreshold;  // Time in milliseconds the vehicle doesn't move to start unstuck procedure.
+    DWORD mStuckStarted;            // Time unstuck procedure is started.
+    bool mIsStuck;                  // Stuck state.
 
-    bool mIsStuck;
-    DWORD mStuckStarted;
+    const int mStuckCountThreshold; // Number of times unstuck is allowed within that time window.
+    const int mStuckCountTime;      // Time window in milliseconds to remember previous unstuck attempts within.
+    int mStuckCountStarted;         // Time previous stuck count was reset.
+    int mStuckCount;                // Number of times unstuck was started last mStuckCountTime seconds.
 };

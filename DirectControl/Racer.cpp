@@ -26,14 +26,18 @@ std::vector<Hash> headLightsOnWeathers = {
 };
 
 Racer::Racer(Vehicle vehicle) :
-    mStuckThreshold(2000),
     mVehicle(vehicle),
     mActive(gSettings.AIDefaultActive),
     mDebugView(gSettings.AIShowDebug),
     mAuxPeriod(GetRand(2000, 10000)),
     mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod),
+    mStuckTimeThreshold(2000),
+    mStuckStarted(0),
     mIsStuck(false),
-    mStuckStarted(0) {
+    mStuckCountThreshold(3),
+    mStuckCountTime(30000),
+    mStuckCountStarted(0),
+    mStuckCount(0) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -43,14 +47,18 @@ Racer::Racer(Vehicle vehicle) :
 }
 
 Racer::Racer(Racer &&other) noexcept :
-    mStuckThreshold(other.mStuckThreshold),
     mVehicle(other.mVehicle),
     mActive(other.mActive),
     mDebugView(other.mDebugView),
     mAuxPeriod(other.mAuxPeriod),
     mAuxPrevTick(other.mAuxPrevTick),
+    mStuckTimeThreshold(other.mStuckTimeThreshold),
+    mStuckStarted(other.mStuckStarted),
     mIsStuck(other.mIsStuck),
-    mStuckStarted(other.mStuckStarted) {
+    mStuckCountThreshold(other.mStuckCountThreshold),
+    mStuckCountTime(other.mStuckCountTime),
+    mStuckCountStarted(other.mStuckCountStarted),
+    mStuckCount(other.mStuckCount) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -672,11 +680,47 @@ void Racer::updateAux() {
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 }
 
+void Racer::resetStuckState(bool resetStuckCount) {
+    mIsStuck = false;
+    mStuckStarted = 0;
+    if (resetStuckCount) {
+        mStuckCount = 0;
+        mStuckCountStarted = 0;
+    }
+}
+
 void Racer::updateStuck(const std::vector<Point> &coords) {
     if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
-        mIsStuck = false;
-        mStuckStarted = 0;
+        resetStuckState(true);
         return;
+    }
+
+    if (mStuckCountStarted != 0 && GetTickCount() > mStuckCountStarted + mStuckCountTime) {
+        if (mStuckCount > mStuckCountThreshold) {
+            if (mDebugView) {
+                showNotification(fmt("Teleporting stuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+            }
+
+            float smallestDistanceAI = 10000.0f;
+            Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+            Vector3 aiTrackClosest = aiPosition;
+            for (auto& point : coords) {
+                Vector3 coord = point.v;
+                float distanceAI = Distance(aiPosition, coord);
+                if (distanceAI < smallestDistanceAI) {
+                    smallestDistanceAI = distanceAI;
+                    aiTrackClosest = point.v;
+                }
+            }
+            ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.x, aiTrackClosest.y, aiTrackClosest.z, 0, 0, 0, 0);
+            VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+            resetStuckState(true);
+        }
+        else {
+            mStuckCount = 0;
+            mStuckCountStarted = 0;
+        }
     }
 
     if (!mIsStuck) {
@@ -685,27 +729,29 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
                 mStuckStarted = GetTickCount();
             }
         }
-        if (GetTickCount() > mStuckStarted + mStuckThreshold && GetTickCount() < mStuckStarted + 2 * mStuckThreshold) {
+        if (GetTickCount() > mStuckStarted + mStuckTimeThreshold && GetTickCount() < mStuckStarted + 2 * mStuckTimeThreshold) {
             if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
                 mIsStuck = true;
                 if (!VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(mVehicle)) {
                     VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
                 }
                 if (mDebugView) {
-                    showNotification(fmt("Attempting to unstuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+                    showNotification(fmt("Attempting to unstuck %s (%s), attempt %d", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle), mStuckCount + 1));
                 }
+                if (mStuckCount == 0) {
+                    mStuckCountStarted = GetTickCount();
+                }
+                mStuckCount++;
             }
             else {
-                mIsStuck = false;
-                mStuckStarted = 0;
+                resetStuckState(false);
             }
         }
     }
     else {
-        if (GetTickCount() > mStuckStarted + 2 * mStuckThreshold) {
-            mIsStuck = false;
-            mStuckStarted = 0;
+        if (GetTickCount() > mStuckStarted + 2 * mStuckTimeThreshold) {
+            resetStuckState(false);
         }
     }
     
