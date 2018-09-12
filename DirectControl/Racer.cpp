@@ -421,7 +421,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float steeringAngleRelX = ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(actualAngle);
     Vector3 turnRelative = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, turnWorld.x, turnWorld.y, turnWorld.z);
     float turnRelativeNormX = (travelRelative.x + turnRelative.x) / 2.0f;
-    float understeer = sgn(travelRelative.x - steeringAngleRelX) * (turnRelativeNormX - steeringAngleRelX);
     if (steeringAngleRelX > turnRelativeNormX && turnRelativeNormX > travelRelative.x ||
         steeringAngleRelX < turnRelativeNormX && turnRelativeNormX < travelRelative.x) {
         understeering = true;
@@ -429,11 +428,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     if (understeering && abs(turnSteer * steerMult) > 1.0f && aiSpeed > 10.0f) {
         handbrake = true;
     }
-    std::string dbgUndersteerColor = "";
-    if (understeering) dbgUndersteerColor = "~b~";
-    if (understeering && handbrake) dbgUndersteerColor = "~r~";
-
-    showText(0.33f, 0.0f, 0.5f, fmt("%sUndersteer @ %.03f", dbgUndersteerColor, understeer));
 
     // start oversteer detect
     float angleOverSteer = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
@@ -445,10 +439,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         steerMult *= csMult;
         dbgSpinThrottle = spinoutMult < 1.0f;
         dbgSpinCountersteer = steerMult > 1.0f;
-    }
-
-    if (overtakePoints.size() == 0) {
-        //handbrake = abs(turnSteer) > limitRadians * 2.0f && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 12.0f;
     }
 
     float maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
@@ -476,7 +466,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         float smallestDistanceVelocity = 10000.0f;
         float smallestDistanceRotation = 10000.0f;
         float smallestDistanceAI = 10000.0f;
-        Point aiTrackClosest{};
         Point turnTrackClosest{};
         for (auto& point : coords) {
             Vector3 coord = point.v;
@@ -492,9 +481,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             }
             if (distanceAI < smallestDistanceAI) {
                 smallestDistanceAI = distanceAI;
-                aiTrackClosest = point;
             }
-
         }
 
         if ((smallestDistanceVelocity + smallestDistanceRotation) / 2.0f > turnTrackClosest.w && 
@@ -506,7 +493,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
-    // TODO: Clean up, consider braking earlier?
+    // TODO: Clean up, consider braking _earlier_ instead of _harder_.
     // Stop yeeting off cliffs
     float aiGndZ = 0.0f;
     float laGndZ = 0.0f;
@@ -519,14 +506,12 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         float dropDangerMult = map(drop, gSettings.AIElevationMin, gSettings.AIElevationMax, gSettings.AIElevationDangerMin, gSettings.AIElevationDangerMax);
 
         if (drop > gSettings.AIElevationDropThreshold) {
-            //throttle *= 1.0f / dropDangerMult;
             maxBrake *= dropDangerMult;
-            //turnSteer *= dropDangerMult;
 
-            showText(0.0f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
-            showText(0.0f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
-            showText(0.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
-            showText(0.0f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
+            //showText(0.0f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
+            //showText(0.0f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
+            //showText(0.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
+            //showText(0.0f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
         }
     }
 
@@ -571,14 +556,17 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         rot.y = 90.0f;
 
         Color c{
-            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 127.0f, 255.0f)), 127, 255),
-            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 127.0f)), 127, 255),
+            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 0.0f, 255.0f)), 127, 255),
+            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 0.0f)), 127, 255),
             0,
             255
         };
 
         if (mIsStuck) {
             drawSphere(up, 0.5f, red);
+        }
+        else if (handbrake) {
+            drawSphere(up, 0.5f, yellow);
         }
         else {
             drawChevron(up, dir, rot, 1.0f, throttle, c);
@@ -603,27 +591,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             });
         }
     }
-}
-
-// TODO: Make proper Debug thing
-void drawInputWheelInfo(float t, float b, float s) {
-    float PedalInfoX = 0.970000;
-    float PedalInfoY = 0.870000;
-    float PedalInfoH = 0.100000;
-    float PedalInfoW = 0.040000;
-    float PedalInfoPadX = 0.000000;
-    float PedalInfoPadY = 0.000000;
-
-    float barWidth = PedalInfoW / 3.0f;
-    float barYBase = (PedalInfoY + PedalInfoH * 0.5f);
-
-    s *= 0.5f;
-    s += 0.5f;
-
-    GRAPHICS::DRAW_RECT(PedalInfoX, PedalInfoY, 3.0f * barWidth + PedalInfoPadX, PedalInfoH + PedalInfoPadY, 0, 0, 0, 92);
-    GRAPHICS::DRAW_RECT(PedalInfoX - 1.0f*barWidth, barYBase - t*PedalInfoH*0.5f, barWidth, t*PedalInfoH, 0, 255, 0, 255);
-    GRAPHICS::DRAW_RECT(PedalInfoX + 0.0f*barWidth, barYBase - b*PedalInfoH*0.5f, barWidth, b*PedalInfoH, 255, 0, 0, 255);
-    GRAPHICS::DRAW_RECT(PedalInfoX + 1.0f*barWidth, barYBase - s*PedalInfoH*0.5f, barWidth, s*PedalInfoH, 0, 0, 255, 255);
 }
 
 void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
@@ -670,7 +637,6 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, (1.0f / 0.05f) * GAMEPLAY::GET_FRAME_TIME()));
     gExt.SetHandbrake(mVehicle, handbrake);
-    drawInputWheelInfo(gExt.GetThrottleP(mVehicle), gExt.GetBrakeP(mVehicle), gExt.GetSteeringAngle(mVehicle)/gExt.GetMaxSteeringAngle(mVehicle));
 }
 
 void Racer::updateAux() {
@@ -799,11 +765,8 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
     int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
     int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
 
-    //if (returnIndex == coords.size() - 1 && (lookAheadDistance > smallestToLa || Distance(coords[0].v, coords[coords.size() - 1].v) > lookAheadDistance)) {
-    //    returnIndex = 0;
-    //    source = "start/stop";
-    //}
-    /*else */if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) && smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
+    if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) &&
+        smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
         returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
         source = "continuous";
@@ -869,7 +832,6 @@ float Racer::calculateDesiredHeading(float steeringAngle, float steeringMax, flo
         correction = steeringMax;
     if (correction < -steeringMax)
         correction = -steeringMax;
-
 
     return correction;
 }
