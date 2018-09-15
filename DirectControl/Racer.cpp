@@ -26,19 +26,21 @@ std::vector<Hash> headLightsOnWeathers = {
     0xC91A3202, // HALLOWEEN
 };
 
-Racer::Racer(Vehicle vehicle) :
-    mVehicle(vehicle),
-    mActive(gSettings.AIDefaultActive),
-    mDebugView(gSettings.AIShowDebug),
-    mAuxPeriod(GetRand(2000, 10000)),
-    mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod),
-    mStuckTimeThreshold(2000),
-    mStuckStarted(0),
-    mIsStuck(false),
-    mStuckCountThreshold(3),
-    mStuckCountTime(30000),
-    mStuckCountStarted(0),
-    mStuckCount(0) {
+Racer::Racer(Vehicle vehicle) : mVehicle(vehicle)
+                              , mActive(gSettings.AIDefaultActive)
+                              , mDebugView(gSettings.AIShowDebug)
+                              , mPrevPointIdx(0)
+                              , mLapTimer(0)
+                              , mLapTime(0)
+                              , mAuxPeriod(GetRand(2000, 10000))
+                              , mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod)
+                              , mStuckTimeThreshold(2000)
+                              , mStuckStarted(0)
+                              , mIsStuck(false)
+                              , mStuckCountThreshold(3)
+                              , mStuckCountTime(30000)
+                              , mStuckCountStarted(0)
+                              , mStuckCount(0) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -47,19 +49,21 @@ Racer::Racer(Vehicle vehicle) :
     mBlip->SetColor(BlipColorYellow);
 }
 
-Racer::Racer(Racer &&other) noexcept :
-    mVehicle(other.mVehicle),
-    mActive(other.mActive),
-    mDebugView(other.mDebugView),
-    mAuxPeriod(other.mAuxPeriod),
-    mAuxPrevTick(other.mAuxPrevTick),
-    mStuckTimeThreshold(other.mStuckTimeThreshold),
-    mStuckStarted(other.mStuckStarted),
-    mIsStuck(other.mIsStuck),
-    mStuckCountThreshold(other.mStuckCountThreshold),
-    mStuckCountTime(other.mStuckCountTime),
-    mStuckCountStarted(other.mStuckCountStarted),
-    mStuckCount(other.mStuckCount) {
+Racer::Racer(Racer &&other) noexcept : mVehicle(other.mVehicle)
+                                     , mActive(other.mActive)
+                                     , mDebugView(other.mDebugView)
+                                     , mPrevPointIdx(other.mPrevPointIdx)
+                                     , mLapTimer(other.mLapTimer)
+                                     , mLapTime(other.mLapTime)
+                                     , mAuxPeriod(other.mAuxPeriod)
+                                     , mAuxPrevTick(other.mAuxPrevTick)
+                                     , mStuckTimeThreshold(other.mStuckTimeThreshold)
+                                     , mStuckStarted(other.mStuckStarted)
+                                     , mIsStuck(other.mIsStuck)
+                                     , mStuckCountThreshold(other.mStuckCountThreshold)
+                                     , mStuckCountTime(other.mStuckCountTime)
+                                     , mStuckCountStarted(other.mStuckCountStarted)
+                                     , mStuckCount(other.mStuckCount) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -576,6 +580,28 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         drawLine(aiPosition, (nextPositionVelocity + turnWorld) * 0.5f, white);
         drawSphere((nextPositionVelocity + turnWorld) * 0.5f, 0.25f, white);
 
+
+        int currPointIdx = -1;
+
+        float smallestToAi = 10000.0f;
+        for (auto i = 0; i < coords.size(); ++i) {
+            float distanceAi = Distance(aiPosition, coords[i].v);
+            if (distanceAi < smallestToAi) {
+                smallestToAi = distanceAi;
+                currPointIdx = i;
+            }
+        }
+
+
+        if (currPointIdx < mPrevPointIdx && currPointIdx < 10 && mPrevPointIdx > coords.size() - 11) {
+            mLapTime = mLapTimer.Elapsed();
+            mLapTimer.Reset();
+        }
+        mPrevPointIdx = currPointIdx;
+        int64_t currentLapTime = mLapTimer.Elapsed();
+        std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
+        std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
+
         // Debug text
         if (gSettings.AIShowDebugText) {
             Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
@@ -588,8 +614,17 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 fmt("LABrake: %s", dbgBrakeSrc.c_str()),
                 fmt("LASteer: %s", dbgSteerSrc.c_str()),
                 fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~"),
-                fmt("OT: %s", dbgOvertakeSrc.c_str())
+                fmt("OT: %s", dbgOvertakeSrc.c_str()),
+                fmt("Lap: %s", previousLapTimeFmt.c_str()),
+                fmt("Live: %s", liveLapTimeFmt.c_str()),
             });
+        }
+        else {
+            Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
+            showDebugInfo3D(up2, 10.0f, {
+                fmt("Lap: %s", previousLapTimeFmt.c_str()),
+                fmt("Live: %s", liveLapTimeFmt.c_str()),
+                });
         }
     }
 }

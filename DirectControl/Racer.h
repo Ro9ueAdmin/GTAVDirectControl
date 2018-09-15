@@ -3,6 +3,7 @@
 #include <inc/types.h>
 #include "Blip.h"
 #include "Point.h"
+#include "Util/Timer.h"
 
 /**
  * \brief                       The Racer class contains the racer decision-making and the output/input filters.
@@ -189,6 +190,10 @@ protected:
     std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
+
+    int mPrevPointIdx;              // For lap timing
+    Timer mLapTimer;                // Lap timer
+    int64_t mLapTime;               // Last lap time
 
     DWORD mAuxPeriod;               // Period to check update auxiliaries. Randomized every period.
     DWORD mAuxPrevTick;             // Previous time auxiliaries were updated.
