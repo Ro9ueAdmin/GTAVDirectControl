@@ -1,4 +1,5 @@
 #include "Racer.h"
+#include <algorithm>
 #include <inc/natives.h>
 #include "Util/StringFormat.h"
 #include "Util/MathExt.h"
@@ -180,8 +181,8 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
         float constrainX = (npcDim.x + aiDim.y) * pMult;
         float constrainY = (npcDim.y + aiDim.y) * nMult;
 
-        float xOffset = constrain(xOff, -constrainX, constrainX);
-        float yOffset = constrain(yOff, -constrainY, constrainY);
+        float xOffset = std::clamp(xOff, -constrainX, constrainX);
+        float yOffset = std::clamp(yOff, -constrainY, constrainY);
 
         Vector3 npcDirectionWorldCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading + deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading + deg2rad(90.0f)) + yOffset, 0.0f);
         Vector3 npcDirectionWorldCCW = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, distMultX * sin(diffHeading - deg2rad(90.0f)) + xOffset, distMultY * cos(diffHeading - deg2rad(90.0f)) + yOffset, 0.0f);
@@ -358,9 +359,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     Vector3 aiForward = aiPosition + ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
-    float lookAheadThrottle = constrain(gSettings.AILookaheadThrottleSpeedMult * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadSteer =  constrain(gSettings.AILookaheadSteerSpeedMult * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
-    float lookAheadBrake = constrain(gSettings.AILookaheadBrakeSpeedMult * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
+    float lookAheadThrottle = std::clamp(gSettings.AILookaheadThrottleSpeedMult * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
+    float lookAheadSteer =  std::clamp(gSettings.AILookaheadSteerSpeedMult * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
+    float lookAheadBrake = std::clamp(gSettings.AILookaheadBrakeSpeedMult * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
@@ -407,8 +408,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(rotationVelocity.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(rotationVelocity.z), 0.0f);
 
     float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
-    float csMult = constrain(map(angle, deg2rad(gSettings.AICountersteerIncreaseStartAngle), deg2rad(gSettings.AICountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
-    float spinoutMult = constrain(map(angle, deg2rad(gSettings.AIThrottleDecreaseStartAngle), deg2rad(gSettings.AIThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
+    float csMult = std::clamp(map(angle, deg2rad(gSettings.AICountersteerIncreaseStartAngle), deg2rad(gSettings.AICountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
+    float spinoutMult = std::clamp(map(angle, deg2rad(gSettings.AIThrottleDecreaseStartAngle), deg2rad(gSettings.AIThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
 
     // TODO: Clean up? Check for use outside offroad slippery driving
     // Yank the handbrake when understeering?
@@ -446,7 +447,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float brakeDiffThrottleBrake = 0.0f;
     if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
         brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(gSettings.AIBrakePointHeadingMinAngle), 0.0f, deg2rad(gSettings.AIBrakePointHeadingMaxAngle - gSettings.AIBrakePointHeadingMinAngle), 0.0f, 1.0f);
-        brakeDiffThrottleBrake *= constrain(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
+        brakeDiffThrottleBrake *= std::clamp(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
             dbgBrakeForHeading = true;
@@ -488,7 +489,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 12.0f) {
             dbgTrackLimits = true;
             float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
-            throttle *= constrain(map(overshoot, 0.0f, 1.0f, 1.0f, 0.0f), 0.0f, 1.0f);
+            throttle *= std::clamp(map(overshoot, 0.0f, 1.0f, 1.0f, 0.0f), 0.0f, 1.0f);
             turnSteer *= map(overshoot, 0.0f, 1.0f, 1.0f, 2.0f);
         }
     }
@@ -515,9 +516,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
-    throttle = constrain(throttle, 0.0f, 1.0f);
-    brake = constrain(maxBrake, 0.0f, 1.0f);
-    steer = constrain(turnSteer * steerMult, -1.0f, 1.0f);
+    throttle = std::clamp(throttle, 0.0f, 1.0f);
+    brake = std::clamp(maxBrake, 0.0f, 1.0f);
+    steer = std::clamp(turnSteer * steerMult, -1.0f, 1.0f);
     
     if (brake > 0.7f)
         throttle = 0.0f;
@@ -556,8 +557,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         rot.y = 90.0f;
 
         Color c{
-            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 0.0f, 255.0f)), 127, 255),
-            constrain(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 0.0f)), 127, 255),
+            std::clamp(static_cast<int>(map(brake, 0.0f, 1.0f, 0.0f, 255.0f)), 127, 255),
+            std::clamp(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 0.0f)), 127, 255),
             0,
             255
         };
