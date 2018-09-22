@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <thirdparty/json.hpp>
+#include <thirdparty/xml2json.hpp>
 
 #include "Memory/VehicleExtensions.hpp"
 #include "XInputControl.h"
@@ -353,7 +354,7 @@ void UpdateCheats() {
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("loadtrack"))) {
         std::string path = "./DirectControl";
         for (auto & p : std::filesystem::directory_iterator(path)) {
-            if (p.path().extension() == ".json")
+            if (p.path().extension() == ".json" || p.path().extension() == ".xml")
                 showNotification(fmt("Track: ~b~%s", p.path().stem().string().c_str()));
         }
 
@@ -368,10 +369,17 @@ void UpdateCheats() {
         json j;
         std::ifstream i("./DirectControl/" + loadFile + ".json");
         if (!i.is_open()) {
-            showNotification("Couldn't find file");
-            return;
+            i.open("./DirectControl/" + loadFile + ".xml");
+            if (!i.is_open()) {
+                showNotification("Couldn't find file");
+                return;
+            }
+            std::string jStr = xml2json(std::string(std::istreambuf_iterator<char>(i), std::istreambuf_iterator<char>()).c_str());
+            j = json::parse(jStr);
         }
-        i >> j;
+        else {
+            i >> j;
+        }
 
         gTrackCoords.clear();
 
