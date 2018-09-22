@@ -48,6 +48,13 @@ public:
     float AIElevationMax;
     float AIElevationDangerMin;
     float AIElevationDangerMax;
+
+    float AITrackLimitsAdjustMinOvershoot;
+    float AITrackLimitsAdjustMaxOvershoot;
+    float AITrackLimitsThrottleMultMinOvershoot;
+    float AITrackLimitsThrottleMultMaxOvershoot;
+    float AITrackLimitsSteerMultMinOvershoot;
+    float AITrackLimitsSteerMultMaxOvershoot;
 };
 
 extern Settings gSettings;

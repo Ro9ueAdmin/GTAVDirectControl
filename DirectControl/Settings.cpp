@@ -97,6 +97,13 @@ void Settings::ReadSettings(const char *file) {
     AIElevationMax =                    ini.GetDoubleValue(paramSection, "AIElevationMax");
     AIElevationDangerMin =              ini.GetDoubleValue(paramSection, "AIElevationDangerMin");
     AIElevationDangerMax =              ini.GetDoubleValue(paramSection, "AIElevationDangerMax");
+
+    AITrackLimitsAdjustMinOvershoot =           ini.GetDoubleValue(paramSection, "AITrackLimitsAdjustMinOvershoot");
+    AITrackLimitsAdjustMaxOvershoot =           ini.GetDoubleValue(paramSection, "AITrackLimitsAdjustMaxOvershoot");
+    AITrackLimitsThrottleMultMinOvershoot =     ini.GetDoubleValue(paramSection, "AITrackLimitsThrottleMultMinOvershoot");
+    AITrackLimitsThrottleMultMaxOvershoot =     ini.GetDoubleValue(paramSection, "AITrackLimitsThrottleMultMaxOvershoot");
+    AITrackLimitsSteerMultMinOvershoot =        ini.GetDoubleValue(paramSection, "AITrackLimitsSteerMultMinOvershoot");
+    AITrackLimitsSteerMultMaxOvershoot =        ini.GetDoubleValue(paramSection, "AITrackLimitsSteerMultMaxOvershoot");
     gLogger.Write(INFO, "Load settings success");
 }
 

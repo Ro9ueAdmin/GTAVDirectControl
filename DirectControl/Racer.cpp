@@ -489,12 +489,29 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             }
         }
 
-        if ((smallestDistanceVelocity + smallestDistanceRotation) / 2.0f > turnTrackClosest.w && 
-            smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 12.0f) {
+        float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
+
+        if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot &&
+            smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 5.0f) {
             dbgTrackLimits = true;
-            float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
-            throttle *= std::clamp(map(overshoot, 0.0f, 1.0f, 1.0f, 0.0f), 0.0f, 1.0f);
-            turnSteer *= map(overshoot, 0.0f, 1.0f, 1.0f, 2.0f);
+            throttle *= std::clamp(
+                map(overshoot, 
+                    gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot, 
+                    gSettings.AITrackLimitsThrottleMultMinOvershoot, gSettings.AITrackLimitsThrottleMultMaxOvershoot)
+                , 0.0f, 1.0f
+            );
+            turnSteer *= map(overshoot, 
+                gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
+                gSettings.AITrackLimitsSteerMultMinOvershoot, gSettings.AITrackLimitsSteerMultMaxOvershoot);
+            if (overshoot > gSettings.AITrackLimitsAdjustMaxOvershoot) {
+                float overshootBrake = map(overshoot,
+                    gSettings.AITrackLimitsAdjustMaxOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot * 2.0f,
+                    0.0f, 1.0f);
+                if (overshootBrake > maxBrake) {
+                    maxBrake = overshootBrake;
+                    throttle = 0.0f;
+                }
+            }
         }
     }
 
