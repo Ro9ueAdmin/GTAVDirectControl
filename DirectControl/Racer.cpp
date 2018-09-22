@@ -352,7 +352,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     bool dbgSpinCountersteer = false;
     bool dbgBrakeForAngle = false;
     bool dbgBrakeForHeading = false;
-    bool dbgTrackLimits = false;
+    int dbgTrackLimits = 0;
     std::string dbgThrottleSrc;
     std::string dbgBrakeSrc;
     std::string dbgSteerSrc;
@@ -504,7 +504,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
         if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot &&
             smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 5.0f) {
-            dbgTrackLimits = true;
+            dbgTrackLimits = 1;
             throttle *= std::clamp(
                 map(overshoot, 
                     gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot, 
@@ -521,6 +521,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 if (overshootBrake > maxBrake) {
                     maxBrake = overshootBrake;
                     throttle = 0.0f;
+                    dbgTrackLimits = 2;
                 }
             }
         }
@@ -634,17 +635,17 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         if (gSettings.AIShowDebugText) {
             Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
             showDebugInfo3D(up2, 10.0f, {
-                fmt("%sSpinThrottle--", dbgSpinThrottle ? "~r~" : "~w~"),
-                fmt("%sSpinSteer++", dbgSpinCountersteer ? "~r~" : "~w~"),
-                fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
-                fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
-                fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
-                fmt("LABrake: %s", dbgBrakeSrc.c_str()),
-                fmt("LASteer: %s", dbgSteerSrc.c_str()),
-                fmt("%sTrackLimits", dbgTrackLimits ? "~r~" : "~w~"),
-                fmt("OT: %s", dbgOvertakeSrc.c_str()),
-                fmt("Lap: %s", previousLapTimeFmt.c_str()),
-                fmt("Live: %s", liveLapTimeFmt.c_str()),
+                fmt("%s(P) %s(ESC)", handbrake ? "~r~" : "~m~", dbgSpinThrottle || dbgSpinCountersteer ? "~o~" : "~m~"),
+                fmt("%sUnder ~m~| %sOver", understeering ? "~r~" : "~m~", angleOverSteer > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
+                fmt("%sTrack Limits", dbgTrackLimits == 2 ? "~r~" : dbgTrackLimits == 1 ? "~o~" : "~m~"),
+                //fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
+                //fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
+                //fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
+                //fmt("LABrake: %s", dbgBrakeSrc.c_str()),
+                //fmt("LASteer: %s", dbgSteerSrc.c_str()),
+                //fmt("OT: %s", dbgOvertakeSrc.c_str()),
+                //fmt("Lap: %s", previousLapTimeFmt.c_str()),
+                //fmt("Live: %s", liveLapTimeFmt.c_str()),
             });
         }
         else {
