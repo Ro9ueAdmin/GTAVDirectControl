@@ -106,6 +106,7 @@ void Settings::ReadSettings(const char *file) {
     AITrackLimitsSteerMultMaxOvershoot =        ini.GetDoubleValue(paramSection, "AITrackLimitsSteerMultMaxOvershoot");
 
     AISteerLookAheadPitch   =           ini.GetDoubleValue(paramSection, "AISteerLookAheadPitch");
+    AIUndersteerHandbrakeTrigger =      ini.GetDoubleValue(paramSection, "AIUndersteerHandbrakeTrigger");
     gLogger.Write(INFO, "Load settings success");
 }
 

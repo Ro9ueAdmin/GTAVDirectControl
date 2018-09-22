@@ -57,6 +57,7 @@ public:
     float AITrackLimitsSteerMultMaxOvershoot;
 
     float AISteerLookAheadPitch;
+    float AIUndersteerHandbrakeTrigger;
 };
 
 extern Settings gSettings;

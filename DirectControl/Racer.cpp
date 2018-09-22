@@ -440,8 +440,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         steeringAngleRelX < turnRelativeNormX && turnRelativeNormX < travelRelative.x) {
         understeering = true;
     }
-    if (understeering && abs(turnSteer * steerMult) > 1.0f && aiSpeed > 10.0f) {
+    if (understeering && abs(turnSteer) > gSettings.AIUndersteerHandbrakeTrigger && aiSpeed > 5.0f) {
         handbrake = true;
+        throttle = 0.0f;
     }
 
     // start oversteer detect
@@ -687,6 +688,11 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         brake = 0.0f;
         steer = 0.0f;
         handbrake = false;
+    }
+
+    if (handbrake) {
+        brake = 0.0f;
+        reduction = 1.0f;
     }
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
