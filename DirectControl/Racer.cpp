@@ -363,14 +363,24 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     Vector3 aiForward = aiPosition + ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
-    float lookAheadThrottle = std::clamp(gSettings.AILookaheadThrottleSpeedMult * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadSteer =  std::clamp(gSettings.AILookaheadSteerSpeedMult * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
-    float lookAheadBrake = std::clamp(gSettings.AILookaheadBrakeSpeedMult * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
+    float aiPitch = ENTITY::GET_ENTITY_PITCH(mVehicle);
+    float pitchClp = std::clamp(aiPitch, gSettings.AISteerLookAheadPitch, 0.0f);
+    float settingLAThrottle = gSettings.AILookaheadThrottleSpeedMult;
+
+    float settingLABrake = gSettings.AILookaheadBrakeSpeedMult;
+    float settingLASteer = gSettings.AILookaheadSteerSpeedMult;
+
+    settingLASteer = map(pitchClp, 0.0f, gSettings.AISteerLookAheadPitch, settingLASteer, settingLABrake);
+
+    float lookAheadSteer =  std::clamp(settingLASteer * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
+
+    float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
+    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
     if (overtakePoints.size() == 2) {
         Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgOvertakeSrc);
         if (Length(overtakePoint) > 0.0f)

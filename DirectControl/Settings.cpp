@@ -104,6 +104,8 @@ void Settings::ReadSettings(const char *file) {
     AITrackLimitsThrottleMultMaxOvershoot =     ini.GetDoubleValue(paramSection, "AITrackLimitsThrottleMultMaxOvershoot");
     AITrackLimitsSteerMultMinOvershoot =        ini.GetDoubleValue(paramSection, "AITrackLimitsSteerMultMinOvershoot");
     AITrackLimitsSteerMultMaxOvershoot =        ini.GetDoubleValue(paramSection, "AITrackLimitsSteerMultMaxOvershoot");
+
+    AISteerLookAheadPitch   =           ini.GetDoubleValue(paramSection, "AISteerLookAheadPitch");
     gLogger.Write(INFO, "Load settings success");
 }
 

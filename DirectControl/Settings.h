@@ -55,6 +55,8 @@ public:
     float AITrackLimitsThrottleMultMaxOvershoot;
     float AITrackLimitsSteerMultMinOvershoot;
     float AITrackLimitsSteerMultMaxOvershoot;
+
+    float AISteerLookAheadPitch;
 };
 
 extern Settings gSettings;
