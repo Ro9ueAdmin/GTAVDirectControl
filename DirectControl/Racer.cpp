@@ -322,6 +322,26 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     return {};
 }
 
+float Racer::avgCenterDiff(const std::vector<Point>& coords, uint32_t idx) {
+    float diff = 0.0f;
+    Vector3 a = coords[(idx + 0) % coords.size()].v;
+    Vector3 b = coords[(idx + 1) % coords.size()].v;
+    for (uint32_t i = 2; i < 10; ++i) {
+        Vector3 c = coords[(idx + i) % coords.size()].v;
+
+        Vector3 cwA = GetPerpendicular(a, b, coords[idx].w, true);
+        Vector3 ccwA = GetPerpendicular(a, b, coords[idx].w, false);
+
+        Vector3 cwB = GetPerpendicular(b, c, coords[idx].w, true);
+        Vector3 ccwB = GetPerpendicular(b, c, coords[idx].w, false);
+
+        float thisDiff = Distance(cwA, cwB) - Distance(ccwA, ccwB);
+        diff += thisDiff;
+    }
+    diff /= 8.0f;
+    return diff;
+}
+
 void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
                         float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
     handbrake = false;
@@ -365,6 +385,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     float aiPitch = ENTITY::GET_ENTITY_PITCH(mVehicle);
     float pitchClp = std::clamp(aiPitch, gSettings.AISteerLookAheadPitch, 0.0f);
+    //showText(0.1f, 0.1f, 0.5f, fmt("Pitch: %.03f", pitchClp));
     float settingLAThrottle = gSettings.AILookaheadThrottleSpeedMult;
 
     float settingLABrake = gSettings.AILookaheadBrakeSpeedMult;
@@ -377,10 +398,30 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
     float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc);
+    uint32_t throttleIdx;
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc, throttleIdx);
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
 
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc);
+    uint32_t steerIdx;
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc, steerIdx);
+    Vector3 origPosSteer = nextPositionSteer;
+    {
+        Vector3 steerA = coords[(steerIdx + 0) % coords.size()].v;
+        Vector3 steerB = coords[(steerIdx + 1) % coords.size()].v;
+
+        float steerDiff = avgCenterDiff(coords, steerIdx);
+        float accelDiff = avgCenterDiff(coords, throttleIdx);
+
+        if (abs(accelDiff) > abs(steerDiff))
+            steerDiff = -accelDiff;
+
+        float cDist = lerp(mCDistPrev, map(std::clamp(steerDiff, -2.0f, 2.0f), -2.0f, 2.0f, -coords[steerIdx].w, coords[steerIdx].w), GAMEPLAY::GET_FRAME_TIME() / 0.200f);
+        mCDistPrev = cDist;
+
+        nextPositionSteer = GetPerpendicular(steerA, steerB, cDist, false);
+        drawSphere(nextPositionSteer, 0.5f, { 0 ,0 ,0 , 255 });
+    }
+
     if (overtakePoints.size() == 2) {
         Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgOvertakeSrc);
         if (Length(overtakePoint) > 0.0f)
@@ -457,7 +498,10 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         dbgSpinCountersteer = steerMult > 1.0f;
     }
 
-    float maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
+    float maxBrake = 0.0f;
+    // maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
+    // TODO: Expose 0.5f and 1.5f modifiers. Right more = more aggro/late brakey // 2.0 is also ok?
+    maxBrake = map(aiSpeed, 0.5f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 2.0f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 0.0f, 1.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
     if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
@@ -479,6 +523,16 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     // Track limits
     {
+        Vector3 overshootCoord = (nextPositionVelocity + turnWorld) * 0.5f;
+        bool inside = false;
+        if (Distance(overshootCoord, nextPositionSteer) < Distance(overshootCoord, origPosSteer)) {
+            //showText(0.5f, 0.01f, 1.0f, "Inside");
+            inside = true;
+        }
+        else {
+            //showText(0.5f, 0.01f, 1.0f, "Outside");
+        }
+
         float smallestDistanceVelocity = 10000.0f;
         float smallestDistanceRotation = 10000.0f;
         float smallestDistanceAI = 10000.0f;
@@ -502,7 +556,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
         float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
 
-        if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot &&
+        if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && !inside && 
             smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 5.0f) {
             dbgTrackLimits = 1;
             throttle *= std::clamp(
@@ -555,6 +609,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     
     if (brake > 0.7f)
         throttle = 0.0f;
+    if (brake < 0.15f)
+        brake = 0.0f;
 
     if (throttle > 0.95f)
         throttle = 1.0f;
@@ -638,6 +694,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 fmt("%s(P) %s(ESC)", handbrake ? "~r~" : "~m~", dbgSpinThrottle || dbgSpinCountersteer ? "~o~" : "~m~"),
                 fmt("%sUnder ~m~| %sOver", understeering ? "~r~" : "~m~", angleOverSteer > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
                 fmt("%sTrack Limits", dbgTrackLimits == 2 ? "~r~" : dbgTrackLimits == 1 ? "~o~" : "~m~"),
+                fmt("%sT: %03d%% ~m~| %sB: %03d%%", throttle > 0.5 ? "~g~" : "~m~", (int)(throttle * 100.0f), brake > 0.5 ? "~r~" : "~m~", (int)(brake * 100.0f)),
                 //fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
                 //fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
                 //fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
@@ -698,14 +755,14 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
-    gExt.SetThrottleP(mVehicle, throttle);
-    gExt.SetBrakeP(mVehicle, brake);
+    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
+    gExt.SetBrakeP(mVehicle, lerp(gExt.GetBrakeP(mVehicle), brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
     if (brake > 0.15f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, (1.0f / 0.05f) * GAMEPLAY::GET_FRAME_TIME()));
+    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
     gExt.SetHandbrake(mVehicle, handbrake);
 }
 
@@ -798,7 +855,13 @@ Vehicle Racer::GetVehicle() {
 }
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
-                        float lookAheadDistance, float actualAngle, std::string &source) {
+    float lookAheadDistance, float actualAngle, std::string &source) {
+    uint32_t discard;
+    return getCoord(coords, lookAheadDistance, actualAngle, source, discard);
+}
+
+Vector3 Racer::getCoord(const std::vector<Point> &coords,
+                        float lookAheadDistance, float actualAngle, std::string &source, uint32_t& index) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
@@ -846,7 +909,7 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
         returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
         source = "forwards";
     }
-
+    index = returnIndex;
     return coords[returnIndex].v;
 }
 

@@ -109,8 +109,9 @@ protected:
      * \param [out] source              Debug info containing which mode was used for choosing the coordinate.
      * \return                          Chosen coordinate from the list.
      */
+    Vector3 getCoord(const std::vector<Point>& coords, float lookAheadDistance, float actualAngle, std::string& source);
     Vector3 getCoord(const std::vector<Point> &coords, float lookAheadDistance,
-                     float actualAngle, std::string &source);
+                     float actualAngle, std::string &source, uint32_t& index);
 
     /**
      * \brief                   Calculate average angle of the steered wheels.
@@ -185,6 +186,7 @@ protected:
      */
     Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
                                 std::string &overtakeReason);
+    float avgCenterDiff(const std::vector<Point>& coords, uint32_t idx);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
     std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.
@@ -206,4 +208,6 @@ protected:
     const int mStuckCountTime;      // Time window in milliseconds to remember previous unstuck attempts within.
     int mStuckCountStarted;         // Time previous stuck count was reset.
     int mStuckCount;                // Number of times unstuck was started last mStuckCountTime seconds.
+
+    float mCDistPrev = 0.0f;
 };

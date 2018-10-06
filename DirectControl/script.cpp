@@ -422,6 +422,10 @@ void UpdateCheats() {
         showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));
     }
 
+    if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("reverse"))) {
+        std::reverse(gTrackCoords.begin(), gTrackCoords.end());
+    }
+
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("drawtrack"))) {
         gSettings.TrackShowDebug = !gSettings.TrackShowDebug;
     }

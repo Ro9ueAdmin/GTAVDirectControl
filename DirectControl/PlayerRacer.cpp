@@ -36,14 +36,16 @@ void PlayerRacer::UpdateControl() {
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
 
-    gExt.SetThrottleP(mVehicle, throttle);
+    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), throttle, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
+
+    
     gExt.SetBrakeP(mVehicle, brake);
     if (brake > 0.0f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, (1.0f / 0.05f) * GAMEPLAY::GET_FRAME_TIME()));
+    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
     gExt.SetHandbrake(mVehicle, handbrake);
 
     if (mDebugView) {
