@@ -40,7 +40,8 @@ Racer::Racer(Vehicle vehicle) : mVehicle(vehicle)
                               , mStuckCountThreshold(3)
                               , mStuckCountTime(30000)
                               , mStuckCountStarted(0)
-                              , mStuckCount(0) {
+                              , mStuckCount(0)
+                              , mOutsideTimer(7500) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -63,7 +64,8 @@ Racer::Racer(Racer &&other) noexcept : mVehicle(other.mVehicle)
                                      , mStuckCountThreshold(other.mStuckCountThreshold)
                                      , mStuckCountTime(other.mStuckCountTime)
                                      , mStuckCountStarted(other.mStuckCountStarted)
-                                     , mStuckCount(other.mStuckCount) {
+                                     , mStuckCount(other.mStuckCount)
+                                     , mOutsideTimer(other.mOutsideTimer) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpritePersonalVehicleCar);
@@ -498,12 +500,16 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         dbgSpinCountersteer = steerMult > 1.0f;
     }
 
+    // Initial brake application
     float maxBrake = 0.0f;
     // maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
     // TODO: Expose 0.5f and 1.5f modifiers. Right more = more aggro/late brakey // 2.0 is also ok?
     maxBrake = map(aiSpeed, 0.5f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 2.0f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 0.0f, 1.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
+    showText(0.1f, 0.00f, 0.5f, fmt("aiHeading: %.03f", aiHeading));
+    showText(0.1f, 0.05f, 0.5f, fmt("throttleBrakeHeading: %.03f", throttleBrakeHeading));
+    showText(0.1f, 0.10f, 0.5f, fmt("diffNodeHeading: %.03f", diffNodeHeading));
     if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
         brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(gSettings.AIBrakePointHeadingMinAngle), 0.0f, deg2rad(gSettings.AIBrakePointHeadingMaxAngle - gSettings.AIBrakePointHeadingMinAngle), 0.0f, 1.0f);
         brakeDiffThrottleBrake *= std::clamp(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
@@ -614,6 +620,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     if (throttle > 0.95f)
         throttle = 1.0f;
+
+    if (throttle > 0.95f && brake < 0.33f)
+        brake = 0.0f;
 
     if (mDebugView) {
         Color red{ 255, 0, 0, 255 };
@@ -776,6 +785,7 @@ void Racer::updateAux() {
 void Racer::resetStuckState(bool resetStuckCount) {
     mIsStuck = false;
     mStuckStarted = 0;
+    mOutsideTimer.Reset();
     if (resetStuckCount) {
         mStuckCount = 0;
         mStuckCountStarted = 0;
@@ -786,6 +796,32 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
     if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
         resetStuckState(true);
         return;
+    }
+
+    {
+        float smallestDistanceAI = 10000.0f;
+        Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+        Point aiTrackClosest = { aiPosition , 5.0f};
+        for (auto& point : coords) {
+            Vector3 coord = point.v;
+            float distanceAI = Distance(aiPosition, coord);
+            if (distanceAI < smallestDistanceAI) {
+                smallestDistanceAI = distanceAI;
+                aiTrackClosest = point;
+            }
+        }
+        if (smallestDistanceAI <= aiTrackClosest.w) {
+            mOutsideTimer.Reset();
+        }
+        if (mOutsideTimer.Expired()) {
+            if (mDebugView) {
+                showNotification(fmt("Teleporting stuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+            }
+            ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.v.x, aiTrackClosest.v.y, aiTrackClosest.v.z, 0, 0, 0, 0);
+            VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+            resetStuckState(true);
+        }
     }
 
     if (mStuckCountStarted != 0 && GetTickCount() > mStuckCountStarted + mStuckCountTime) {

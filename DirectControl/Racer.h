@@ -209,5 +209,7 @@ protected:
     int mStuckCountStarted;         // Time previous stuck count was reset.
     int mStuckCount;                // Number of times unstuck was started last mStuckCountTime seconds.
 
+    Timer mOutsideTimer;            // Out-of-lap timer
+
     float mCDistPrev = 0.0f;
 };
