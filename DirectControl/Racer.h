@@ -86,20 +86,44 @@ public:
      */
     bool GetDebugView();
 protected:
+    /**
+     * \brief                   Container to pass through input info
+     */
+    struct InputInfo {
+        float throttle;
+        float brake;
+        float steer;
+        bool handbrake;
+    };
+
+    /**
+     * \brief                   Container for debug info.
+     */
+    struct DebugInfo {
+        Vector3 nextPositionThrottle;
+        Vector3 nextPositionBrake;
+        Vector3 nextPositionSteer;
+        Vector3 nextPositionVelocity;
+        Vector3 nextPositionRotation;
+        float oversteerAngle;
+        bool oversteerCompensateThrottle;
+        bool oversteerCompensateSteer;
+        bool understeering;
+        int trackLimits;
+    };
 
     /**
      * \brief                   The "brain" of the AI, which takes in information about the track 
      *                          and the current vehicle status and returns the input controls for the car.
      * \param [in] coords       List of track coordinates.
+     * \param [in] opponents    Vehicles to take in consideration.
      * \param [in] limitRadians Steering angle limit of the vehicle.
      * \param [in] actualAngle  Current steering angle.
-     * \param [out] handbrake   Handbrake output.
-     * \param [out] throttle    Throttle output.
-     * \param [out] brake       Brake output.
-     * \param [out] steer       Steering output.
+     * \param [out] inputs      Vehicle input information.
+     * \param [out] dbgInfo     Additional debugging information.
      */
     void getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
-                     bool &handbrake, float &throttle, float &brake, float &steer);
+                     InputInfo& inputs, DebugInfo& dbgInfo);
 
     /**
      * \brief                           Choose a specific coordinate to navigate to, depending on input data.
@@ -138,6 +162,12 @@ protected:
      */
     float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
                                   float reduction);
+
+    /**
+     * \brief                   Update lap timing
+     * \param [in] points       List of track coords
+     */
+    void updateLapTimers(const std::vector<Point>& points);
 
     /**
      * \brief                   Update auxiliary stuff, like lights and stuff.
@@ -200,6 +230,13 @@ protected:
      * \param [in] coords       List of track coords
      */
     void teleportToClosestNode(const std::vector<Point>& coords);
+
+    /**
+     * \brief                   Display decision-making information and vehicle stats.
+     * \param [in] inputs       Inputs to the vehicle.
+     * \param [in] dbgInfo      Additional debug information.
+     */
+    void displayDebugInfo(const Racer::InputInfo& inputs, const DebugInfo& dbgInfo);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
     std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.

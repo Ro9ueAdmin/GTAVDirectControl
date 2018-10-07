@@ -344,11 +344,7 @@ float Racer::avgCenterDiff(const std::vector<Point>& coords, uint32_t idx) {
 }
 
 void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
-                        float actualAngle, bool &handbrake, float &throttle, float &brake, float &steer) {
-    handbrake = false;
-    throttle = 0.0f;
-    brake = 1.0f;
-    steer = 0.0f;
+                        float actualAngle, Racer::InputInfo& inputs, DebugInfo& dbgInfo) {
 
     std::vector<Vector3> overtakePoints;
     Vector3 aiDim = GetEntityDimensions(mVehicle);
@@ -369,11 +365,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     if (!mActive)
         return;
 
-    bool dbgSpinThrottle = false;
-    bool dbgSpinCountersteer = false;
-    bool dbgBrakeForAngle = false;
-    bool dbgBrakeForHeading = false;
-    int dbgTrackLimits = 0;
     std::string dbgThrottleSrc;
     std::string dbgBrakeSrc;
     std::string dbgSteerSrc;
@@ -420,7 +411,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         mCDistPrev = cDist;
 
         nextPositionSteer = GetPerpendicular(steerA, steerB, cDist, false);
-        drawSphere(nextPositionSteer, 0.5f, { 0 ,0 ,0 , 255 });
+        //drawSphere(nextPositionSteer, 0.5f, { 0 ,0 ,0 , 255 });
     }
 
     if (overtakePoints.size() == 2) {
@@ -455,8 +446,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     float steerMult = gSettings.AISteerMult;
 
-    throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
-    throttle *= map(distPerpThrottle, 0.0f, 1.0f, 0.5f, 1.0f);
+    inputs.throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
+    inputs.throttle *= map(distPerpThrottle, 0.0f, 1.0f, 0.5f, 1.0f);
 
     // Decrease throttle when starting to spin out, increase countersteer
     Vector3 nextPositionVelocity = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
@@ -483,20 +474,20 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         understeering = true;
     }
     if (understeering && abs(turnSteer) > gSettings.AIUndersteerHandbrakeTrigger && aiSpeed > 5.0f) {
-        handbrake = true;
-        throttle = 0.0f;
+        inputs.handbrake = true;
+        inputs.throttle = 0.0f;
     }
 
     // start oversteer detect
-    float angleOverSteer = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
-    if (isnan(angleOverSteer))
-        angleOverSteer = 0.0;
+    float oversteerAngle = acos(aiVelocity.y / ENTITY::GET_ENTITY_SPEED(mVehicle))* 180.0f / 3.14159265f;
+    if (isnan(oversteerAngle))
+        oversteerAngle = 0.0;
 
-    if (!understeering && angleOverSteer > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
-        throttle *= spinoutMult;
+    if (!understeering && oversteerAngle > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
+        inputs.throttle *= spinoutMult;
         steerMult *= csMult;
-        dbgSpinThrottle = spinoutMult < 1.0f;
-        dbgSpinCountersteer = steerMult > 1.0f;
+        dbgInfo.oversteerCompensateThrottle = spinoutMult < 1.0f;
+        dbgInfo.oversteerCompensateSteer = steerMult > 1.0f;
     }
 
     // Initial brake application
@@ -506,15 +497,15 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     maxBrake = map(aiSpeed, 0.5f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 2.0f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 0.0f, 1.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
-    showText(0.1f, 0.00f, 0.5f, fmt("aiHeading: %.03f", aiHeading));
-    showText(0.1f, 0.05f, 0.5f, fmt("throttleBrakeHeading: %.03f", throttleBrakeHeading));
-    showText(0.1f, 0.10f, 0.5f, fmt("diffNodeHeading: %.03f", diffNodeHeading));
+    //showText(0.1f, 0.00f, 0.5f, fmt("aiHeading: %.03f", aiHeading));
+    //showText(0.1f, 0.05f, 0.5f, fmt("throttleBrakeHeading: %.03f", throttleBrakeHeading));
+    //showText(0.1f, 0.10f, 0.5f, fmt("diffNodeHeading: %.03f", diffNodeHeading));
     if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
         brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(gSettings.AIBrakePointHeadingMinAngle), 0.0f, deg2rad(gSettings.AIBrakePointHeadingMaxAngle - gSettings.AIBrakePointHeadingMinAngle), 0.0f, 1.0f);
         brakeDiffThrottleBrake *= std::clamp(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
-            dbgBrakeForHeading = true;
+            //dbgBrakeForHeading = true;
         }
     }
 
@@ -522,7 +513,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
         if (brakeTurn > maxBrake) {
             maxBrake = brakeTurn;
-            dbgBrakeForAngle = true;
+            //dbgBrakeForAngle = true;
         }
     }
 
@@ -563,8 +554,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
         if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && !inside && 
             smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 5.0f) {
-            dbgTrackLimits = 1;
-            throttle *= std::clamp(
+            dbgInfo.trackLimits = 1;
+            inputs.throttle *= std::clamp(
                 map(overshoot, 
                     gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot, 
                     gSettings.AITrackLimitsThrottleMultMinOvershoot, gSettings.AITrackLimitsThrottleMultMaxOvershoot)
@@ -579,8 +570,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                     0.0f, 1.0f);
                 if (overshootBrake > maxBrake) {
                     maxBrake = overshootBrake;
-                    throttle = 0.0f;
-                    dbgTrackLimits = 2;
+                    inputs.throttle = 0.0f;
+                    dbgInfo.trackLimits = 2;
                 }
             }
         }
@@ -608,119 +599,31 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         }
     }
 
-    throttle = std::clamp(throttle, 0.0f, 1.0f);
-    brake = std::clamp(maxBrake, 0.0f, 1.0f);
-    steer = std::clamp(turnSteer * steerMult, -1.0f, 1.0f);
+    inputs.throttle = std::clamp(inputs.throttle, 0.0f, 1.0f);
+    inputs.brake = std::clamp(maxBrake, 0.0f, 1.0f);
+    inputs.steer = std::clamp(turnSteer * steerMult, -1.0f, 1.0f);
     
-    if (brake > 0.7f)
-        throttle = 0.0f;
-    if (brake < 0.15f)
-        brake = 0.0f;
+    if (inputs.brake > 0.7f)
+        inputs.throttle = 0.0f;
+    if (inputs.brake < 0.15f)
+        inputs.brake = 0.0f;
 
-    if (throttle > 0.95f)
-        throttle = 1.0f;
+    if (inputs.throttle > 0.95f)
+        inputs.throttle = 1.0f;
 
-    if (throttle > 0.95f && brake < 0.33f)
-        brake = 0.0f;
+    if (inputs.throttle > 0.95f && inputs.brake < 0.33f)
+        inputs.brake = 0.0f;
 
-    if (mDebugView) {
-        Color red{ 255, 0, 0, 255 };
-        Color green{ 0, 255, 0, 255 };
-        Color blue{ 0, 0, 255, 255 };
-        Color white{ 255, 255, 255, 255 };
-        Color yellow{ 255, 255, 0, 255 };
-
-        drawLine(aiPosition, nextPositionThrottle, green);
-        drawSphere(nextPositionThrottle, 0.25f, green);
-        drawLine(aiPosition, nextPositionSteer, blue);
-        drawSphere(nextPositionSteer, 0.25f, blue);
-        drawLine(aiPosition, nextPositionBrake, red);
-        drawSphere(nextPositionBrake, 0.25f, red);
-
-        // draw chevron
-        Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-        Vector3 min, max;
-        GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &min, &max);
-        Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 1.0f);
-
-        // ActualAngle - 90deg to rotate the chevron
-        float debugAngle = actualAngle - deg2rad(90.0f);
-        float steeringAngleRelX = -sin(debugAngle);
-        float steeringAngleRelY = cos(debugAngle);
-
-        Vector3 forward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
-        Vector3 dir = forward - p;
-        Vector3 rot{};
-        rot.y = 90.0f;
-
-        Color c{
-            std::clamp(static_cast<int>(map(brake, 0.0f, 1.0f, 0.0f, 255.0f)), 127, 255),
-            std::clamp(static_cast<int>(map(brake, 0.0f, 1.0f, 255.0f, 0.0f)), 127, 255),
-            0,
-            255
-        };
-
-        if (mStuckTimer.Expired()) {
-            drawSphere(up, 0.5f, red);
-        }
-        else if (handbrake) {
-            drawSphere(up, 0.5f, yellow);
-        }
-        else {
-            drawChevron(up, dir, rot, 1.0f, throttle, c);
-        }
-
-        drawLine(aiPosition, (nextPositionVelocity + turnWorld) * 0.5f, white);
-        drawSphere((nextPositionVelocity + turnWorld) * 0.5f, 0.25f, white);
-
-
-        int currPointIdx = -1;
-
-        float smallestToAi = 10000.0f;
-        for (auto i = 0; i < coords.size(); ++i) {
-            float distanceAi = Distance(aiPosition, coords[i].v);
-            if (distanceAi < smallestToAi) {
-                smallestToAi = distanceAi;
-                currPointIdx = i;
-            }
-        }
-
-
-        if (currPointIdx < mPrevPointIdx && currPointIdx < 10 && mPrevPointIdx > coords.size() - 11) {
-            mLapTime = mLapTimer.Elapsed();
-            mLapTimer.Reset();
-        }
-        mPrevPointIdx = currPointIdx;
-        int64_t currentLapTime = mLapTimer.Elapsed();
-        std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
-        std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
-
-        // Debug text
-        if (gSettings.AIShowDebugText) {
-            Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
-            showDebugInfo3D(up2, 10.0f, {
-                fmt("%s(P) %s(ESC)", handbrake ? "~r~" : "~m~", dbgSpinThrottle || dbgSpinCountersteer ? "~o~" : "~m~"),
-                fmt("%sUnder ~m~| %sOver", understeering ? "~r~" : "~m~", angleOverSteer > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
-                fmt("%sTrack Limits", dbgTrackLimits == 2 ? "~r~" : dbgTrackLimits == 1 ? "~o~" : "~m~"),
-                fmt("%sT: %03d%% ~m~| %sB: %03d%%", throttle > 0.5 ? "~g~" : "~m~", (int)(throttle * 100.0f), brake > 0.5 ? "~r~" : "~m~", (int)(brake * 100.0f)),
-                //fmt("%sBrake4Angle", dbgBrakeForAngle ? "~r~" : "~w~"),
-                //fmt("%sBrake4Heading", dbgBrakeForHeading ? "~r~" : "~w~"),
-                //fmt("LAThrottle: %s", dbgThrottleSrc.c_str()),
-                //fmt("LABrake: %s", dbgBrakeSrc.c_str()),
-                //fmt("LASteer: %s", dbgSteerSrc.c_str()),
-                //fmt("OT: %s", dbgOvertakeSrc.c_str()),
-                //fmt("Lap: %s", previousLapTimeFmt.c_str()),
-                //fmt("Live: %s", liveLapTimeFmt.c_str()),
-            });
-        }
-        //else {
-        //    Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
-        //    showDebugInfo3D(up2, 10.0f, {
-        //        fmt("Lap: %s", previousLapTimeFmt.c_str()),
-        //        fmt("Live: %s", liveLapTimeFmt.c_str()),
-        //        });
-        //}
-    }
+    dbgInfo.nextPositionThrottle = nextPositionThrottle;
+    dbgInfo.nextPositionBrake = nextPositionBrake;
+    dbgInfo.nextPositionSteer = nextPositionSteer;
+    dbgInfo.nextPositionVelocity = nextPositionVelocity;
+    dbgInfo.nextPositionRotation = turnWorld;
+    dbgInfo.oversteerAngle = oversteerAngle;
+    // dbgInfo.oversteerCompensateThrottle above
+    // dbgInfo.oversteerCompensateSteer above
+    dbgInfo.understeering = understeering;
+    //dbgInfo.trackLimits above
 }
 
 void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
@@ -732,6 +635,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         updateAux();
     }
 
+    updateLapTimers(coords);
     updateStuck(coords);
 
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
@@ -741,36 +645,56 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
     float limitRadians = gExt.GetMaxSteeringAngle(mVehicle);
     float reduction = calculateReduction();
 
-    bool handbrake = false;
-    float throttle = 0.0f;
-    float brake = 0.0f;
-    float steer = 0.0f;
-
-    getControls(coords, opponents, limitRadians, actualAngle, handbrake, throttle, brake, steer);
+    DebugInfo dbgInfo{};
+    InputInfo inputs = { 0.0f, 1.0f, 0.0f, false };
+    getControls(coords, opponents, limitRadians, actualAngle, inputs, dbgInfo);
 
     if (mStuckTimer.Expired()) {
-        throttle = -0.4f;
-        brake = 0.0f;
-        steer = 0.0f;
-        handbrake = false;
+        inputs.throttle = -0.4f;
+        inputs.brake = 0.0f;
+        inputs.steer = 0.0f;
+        inputs.handbrake = false;
     }
 
-    if (handbrake) {
-        brake = 0.0f;
+    if (inputs.handbrake) {
+        inputs.brake = 0.0f;
         reduction = 1.0f;
     }
 
-    float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
+    float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, inputs.steer, reduction);
 
-    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
-    gExt.SetBrakeP(mVehicle, lerp(gExt.GetBrakeP(mVehicle), brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
-    if (brake > 0.15f)
+    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), inputs.throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
+    gExt.SetBrakeP(mVehicle, lerp(gExt.GetBrakeP(mVehicle), inputs.brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
+    if (inputs.brake > 0.15f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
     gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
-    gExt.SetHandbrake(mVehicle, handbrake);
+    gExt.SetHandbrake(mVehicle, inputs.handbrake);
+
+    if (mDebugView)
+        displayDebugInfo(inputs, dbgInfo);
+}
+
+void Racer::updateLapTimers(const std::vector<Point>& points) {
+    int currPointIdx = -1;
+
+    float smallestToAi = 10000.0f;
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+    for (auto i = 0ull; i < points.size(); ++i) {
+        float distanceAi = Distance(aiPosition, points[i].v);
+        if (distanceAi < smallestToAi) {
+            smallestToAi = distanceAi;
+            currPointIdx = i;
+        }
+    }
+
+    if (currPointIdx < mPrevPointIdx && currPointIdx < 10 && mPrevPointIdx > points.size() - 11) {
+        mLapTime = mLapTimer.Elapsed();
+        mLapTimer.Reset();
+    }
+    mPrevPointIdx = currPointIdx;
 }
 
 void Racer::updateAux() {
@@ -795,7 +719,6 @@ void Racer::teleportToClosestNode(const std::vector<Point>& coords) {
     ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.x, aiTrackClosest.y, aiTrackClosest.z, 0, 0, 0, 0);
     VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
 }
-
 
 void Racer::updateStuck(const std::vector<Point> &coords) {
     if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
@@ -1005,4 +928,78 @@ float Racer::calculateDesiredHeading(float steeringAngle, float steeringMax, flo
         correction = -steeringMax;
 
     return correction;
+}
+
+void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugInfo& dbgInfo) {
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+    float actualAngle = getSteeringAngle();
+
+    drawLine(aiPosition, dbgInfo.nextPositionThrottle, solidGreen);
+    drawSphere(dbgInfo.nextPositionThrottle, 0.25f, solidGreen);
+    drawLine(aiPosition, dbgInfo.nextPositionSteer, solidBlue);
+    drawSphere(dbgInfo.nextPositionSteer, 0.25f, solidBlue);
+    drawLine(aiPosition, dbgInfo.nextPositionBrake, solidRed);
+    drawSphere(dbgInfo.nextPositionBrake, 0.25f, solidRed);
+
+    // draw chevron
+    Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+    Vector3 min, max;
+    GAMEPLAY::GET_MODEL_DIMENSIONS(ENTITY::GET_ENTITY_MODEL(mVehicle), &min, &max);
+    Vector3 up = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 1.0f);
+
+    // ActualAngle - 90deg to rotate the chevron
+    float debugAngle = actualAngle - deg2rad(90.0f);
+    float steeringAngleRelX = -sin(debugAngle);
+    float steeringAngleRelY = cos(debugAngle);
+
+    Vector3 forward = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
+    Vector3 dir = forward - p;
+    Vector3 rot{};
+    rot.y = 90.0f;
+
+    Color c{
+        std::clamp(static_cast<int>(map(inputs.brake, 0.0f, 1.0f, 0.0f, 255.0f)), 127, 255),
+        std::clamp(static_cast<int>(map(inputs.brake, 0.0f, 1.0f, 255.0f, 0.0f)), 127, 255),
+        0,
+        255
+    };
+
+    if (mStuckTimer.Expired()) {
+        drawSphere(up, 0.5f, solidRed);
+    }
+    else if (inputs.handbrake) {
+        drawSphere(up, 0.5f, solidYellow);
+    }
+    else {
+        drawChevron(up, dir, rot, 1.0f, inputs.throttle, c);
+    }
+
+    Vector3 predictedPos = (dbgInfo.nextPositionVelocity + dbgInfo.nextPositionRotation) * 0.5f;
+    drawLine(aiPosition, predictedPos , solidWhite);
+    drawSphere(predictedPos, 0.25f, solidWhite);
+
+    // Debug text
+    if (gSettings.AIShowDebugText) {
+        Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
+        showDebugInfo3D(up2, 10.0f, {
+            fmt("%s(P) %s(ESC)", 
+                inputs.handbrake ? "~r~" : "~m~", 
+                dbgInfo.oversteerCompensateThrottle || dbgInfo.oversteerCompensateSteer ? "~o~" : "~m~"),
+            fmt("%sUnder ~m~| %sOver", 
+                dbgInfo.understeering ? "~r~" : "~m~", 
+                dbgInfo.oversteerAngle > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
+            fmt("%sTrack Limits", 
+                dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~"),
+            fmt("%sT: %03d%% ~m~| %sB: %03d%%", 
+                inputs.throttle > 0.5 ? "~g~" : "~m~", 
+                static_cast<int>(inputs.throttle * 100.0f), 
+                inputs.brake > 0.5 ? "~r~" : "~m~", 
+                static_cast<int>(inputs.brake * 100.0f)),
+            });
+    }
+
+    // TODO: Consider dumping the following somewhere...
+    //auto currentLapTime = mLapTimer.Elapsed();
+    //std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
+    //std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
 }
