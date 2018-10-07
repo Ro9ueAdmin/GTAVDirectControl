@@ -28,3 +28,7 @@ bool Timer::Expired() const {
 int64_t Timer::Elapsed() const {
     return now() - mPreviousTime;
 }
+
+int64_t Timer::Period() const {
+    return mPeriod;
+}

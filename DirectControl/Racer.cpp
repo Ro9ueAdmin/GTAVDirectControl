@@ -8,7 +8,7 @@
 #include "Memory/VehicleExtensions.hpp"
 #include "Settings.h"
 
-std::vector<Hash> headLightsOnWeathers = {
+const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
 //    0x36A83D84, // CLEAR
 //    0x30FDAF5C, // CLOUDS
@@ -26,22 +26,20 @@ std::vector<Hash> headLightsOnWeathers = {
     0xC91A3202, // HALLOWEEN
 };
 
-Racer::Racer(Vehicle vehicle) : mVehicle(vehicle)
-                              , mActive(gSettings.AIDefaultActive)
-                              , mDebugView(gSettings.AIShowDebug)
-                              , mPrevPointIdx(0)
-                              , mLapTimer(0)
-                              , mLapTime(0)
-                              , mAuxPeriod(GetRand(2000, 10000))
-                              , mAuxPrevTick(GetTickCount() + rand() % mAuxPeriod)
-                              , mStuckTimeThreshold(2000)
-                              , mStuckStarted(0)
-                              , mIsStuck(false)
-                              , mStuckCountThreshold(3)
-                              , mStuckCountTime(30000)
-                              , mStuckCountStarted(0)
-                              , mStuckCount(0)
-                              , mOutsideTimer(7500) {
+Racer::Racer(Vehicle vehicle)
+    : mVehicle(vehicle)
+    , mActive(gSettings.AIDefaultActive)
+    , mDebugView(gSettings.AIShowDebug)
+    , mPrevPointIdx(0)
+    , mLapTimer(0)
+    , mLapTime(0)
+    , mAuxTimer(GetRand(2000, 10000))
+    , mStuckTimer(2000)
+    , mUnstuckTimer(1000)
+    , mStuckCountThreshold(3)
+    , mStuckCount(0)
+    , mStuckCountTimer(30000)
+    , mOutsideTimer(10000) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpriteStandard);
@@ -51,22 +49,20 @@ Racer::Racer(Vehicle vehicle) : mVehicle(vehicle)
     mBlip->ShowHeading(true);
 }
 
-Racer::Racer(Racer &&other) noexcept : mVehicle(other.mVehicle)
-                                     , mActive(other.mActive)
-                                     , mDebugView(other.mDebugView)
-                                     , mPrevPointIdx(other.mPrevPointIdx)
-                                     , mLapTimer(other.mLapTimer)
-                                     , mLapTime(other.mLapTime)
-                                     , mAuxPeriod(other.mAuxPeriod)
-                                     , mAuxPrevTick(other.mAuxPrevTick)
-                                     , mStuckTimeThreshold(other.mStuckTimeThreshold)
-                                     , mStuckStarted(other.mStuckStarted)
-                                     , mIsStuck(other.mIsStuck)
-                                     , mStuckCountThreshold(other.mStuckCountThreshold)
-                                     , mStuckCountTime(other.mStuckCountTime)
-                                     , mStuckCountStarted(other.mStuckCountStarted)
-                                     , mStuckCount(other.mStuckCount)
-                                     , mOutsideTimer(other.mOutsideTimer) {
+Racer::Racer(Racer &&other) noexcept
+    : mVehicle(other.mVehicle)
+    , mActive(other.mActive)
+    , mDebugView(other.mDebugView)
+    , mPrevPointIdx(other.mPrevPointIdx)
+    , mLapTimer(other.mLapTimer)
+    , mLapTime(other.mLapTime)
+    , mAuxTimer(other.mAuxTimer)
+    , mStuckTimer(other.mStuckTimer)
+    , mUnstuckTimer(other.mUnstuckTimer)
+    , mStuckCountThreshold(other.mStuckCountThreshold)
+    , mStuckCount(other.mStuckCount)
+    , mStuckCountTimer(other.mStuckCountTimer)
+    , mOutsideTimer(other.mOutsideTimer) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
     mBlip->SetSprite(BlipSpriteStandard);
@@ -664,7 +660,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
             255
         };
 
-        if (mIsStuck) {
+        if (mStuckTimer.Expired()) {
             drawSphere(up, 0.5f, red);
         }
         else if (handbrake) {
@@ -717,13 +713,13 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                 //fmt("Live: %s", liveLapTimeFmt.c_str()),
             });
         }
-        else {
-            Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
-            showDebugInfo3D(up2, 10.0f, {
-                fmt("Lap: %s", previousLapTimeFmt.c_str()),
-                fmt("Live: %s", liveLapTimeFmt.c_str()),
-                });
-        }
+        //else {
+        //    Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
+        //    showDebugInfo3D(up2, 10.0f, {
+        //        fmt("Lap: %s", previousLapTimeFmt.c_str()),
+        //        fmt("Live: %s", liveLapTimeFmt.c_str()),
+        //        });
+        //}
     }
 }
 
@@ -731,9 +727,8 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
     if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
         return;
 
-    if (GetTickCount() > mAuxPrevTick + mAuxPeriod) {
-        mAuxPeriod = GetRand(2000, 10000);
-        mAuxPrevTick = GetTickCount();
+    if (mAuxTimer.Expired()) {
+        mAuxTimer.Reset(GetRand(2000, 10000));
         updateAux();
     }
 
@@ -753,7 +748,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     getControls(coords, opponents, limitRadians, actualAngle, handbrake, throttle, brake, steer);
 
-    if (mIsStuck) {
+    if (mStuckTimer.Expired()) {
         throttle = -0.4f;
         brake = 0.0f;
         steer = 0.0f;
@@ -785,26 +780,82 @@ void Racer::updateAux() {
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
 }
 
-void Racer::resetStuckState(bool resetStuckCount) {
-    mIsStuck = false;
-    mStuckStarted = 0;
-    mOutsideTimer.Reset();
-    if (resetStuckCount) {
-        mStuckCount = 0;
-        mStuckCountStarted = 0;
+void Racer::teleportToClosestNode(const std::vector<Point>& coords) {
+    float smallestDistanceAI = 10000.0f;
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+    Vector3 aiTrackClosest = aiPosition;
+    for (auto& point : coords) {
+        Vector3 coord = point.v;
+        float distanceAI = Distance(aiPosition, coord);
+        if (distanceAI < smallestDistanceAI) {
+            smallestDistanceAI = distanceAI;
+            aiTrackClosest = point.v;
+        }
     }
+    ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.x, aiTrackClosest.y, aiTrackClosest.z, 0, 0, 0, 0);
+    VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
 }
+
 
 void Racer::updateStuck(const std::vector<Point> &coords) {
     if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
-        resetStuckState(true);
+        mStuckCount = 0;
+        mStuckTimer.Reset();
+        mUnstuckTimer.Reset();
+        mStuckCountTimer.Reset();
+        mOutsideTimer.Reset();
         return;
+    }
+
+    if (ENTITY::GET_ENTITY_SPEED(mVehicle) > 0.5f && !mStuckTimer.Expired()) {
+        mStuckTimer.Reset();
+    }
+
+    if (!mStuckTimer.Expired()) {
+        mUnstuckTimer.Reset();
+    }
+
+    if (mUnstuckTimer.Expired()) {
+        if (mDebugView) {
+            showNotification(fmt("Attempting to unstuck %s (%s), attempt %d", 
+                getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle), 
+                mStuckCount + 1));
+        }
+        if (!VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(mVehicle)) {
+            VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+        }
+        mStuckTimer.Reset();
+        mUnstuckTimer.Reset();
+        mStuckCount++;
+    }
+
+    if (mStuckCountTimer.Expired()) {
+        mStuckCount = 0;
+        mStuckCountTimer.Reset();
+    }
+
+    if (mStuckCount == 0) {
+        mStuckCountTimer.Reset();
+    }
+
+    if (mStuckCount > mStuckCountThreshold) {
+        if (mDebugView) {
+            showNotification(fmt("Teleporting %s (%s) to track (after %d attempts)",
+                getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle),
+                mStuckCount));
+        }
+
+        teleportToClosestNode(coords);
+        mStuckCount = 0;
+        mStuckCountTimer.Reset();
     }
 
     {
         float smallestDistanceAI = 10000.0f;
         Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-        Point aiTrackClosest = { aiPosition , 5.0f};
+        Point aiTrackClosest = { aiPosition , 5.0f };
         for (auto& point : coords) {
             Vector3 coord = point.v;
             float distanceAI = Distance(aiPosition, coord);
@@ -818,75 +869,23 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
         }
         if (mOutsideTimer.Expired()) {
             if (mDebugView) {
-                showNotification(fmt("Teleporting stuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+                showNotification(fmt("Teleporting %s (%s) to track (outside track %d millis)", 
+                    getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle),
+                    mOutsideTimer.Elapsed()));
             }
             ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.v.x, aiTrackClosest.v.y, aiTrackClosest.v.z, 0, 0, 0, 0);
             VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
-            resetStuckState(true);
+            mOutsideTimer.Reset();
         }
     }
 
-    if (mStuckCountStarted != 0 && GetTickCount() > mStuckCountStarted + mStuckCountTime) {
-        if (mStuckCount > mStuckCountThreshold) {
-            if (mDebugView) {
-                showNotification(fmt("Teleporting stuck %s (%s)", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
-            }
-
-            float smallestDistanceAI = 10000.0f;
-            Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-            Vector3 aiTrackClosest = aiPosition;
-            for (auto& point : coords) {
-                Vector3 coord = point.v;
-                float distanceAI = Distance(aiPosition, coord);
-                if (distanceAI < smallestDistanceAI) {
-                    smallestDistanceAI = distanceAI;
-                    aiTrackClosest = point.v;
-                }
-            }
-            ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.x, aiTrackClosest.y, aiTrackClosest.z, 0, 0, 0, 0);
-            VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
-            resetStuckState(true);
-        }
-        else {
-            mStuckCount = 0;
-            mStuckCountStarted = 0;
-        }
-    }
-
-    if (!mIsStuck) {
-        if (mStuckStarted == 0) {
-            if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
-                mStuckStarted = GetTickCount();
-            }
-        }
-        if (GetTickCount() > mStuckStarted + mStuckTimeThreshold && GetTickCount() < mStuckStarted + 2 * mStuckTimeThreshold) {
-            if (ENTITY::GET_ENTITY_SPEED(mVehicle) < 0.5f) {
-                mIsStuck = true;
-                if (!VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(mVehicle)) {
-                    VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
-                }
-                if (mDebugView) {
-                    showNotification(fmt("Attempting to unstuck %s (%s), attempt %d", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle), mStuckCount + 1));
-                }
-                if (mStuckCount == 0) {
-                    mStuckCountStarted = GetTickCount();
-                }
-                mStuckCount++;
-            }
-            else {
-                resetStuckState(false);
-            }
-        }
-    }
-    else {
-        if (GetTickCount() > mStuckStarted + 2 * mStuckTimeThreshold) {
-            resetStuckState(false);
-        }
-    }
-    
+    //showText(0.5f, 0.000f, 0.5f, fmt("StuckTimer %s", mStuckTimer.Expired() ? "expired" : ""));
+    //showText(0.5f, 0.025f, 0.5f, fmt("UnstuckTimer %s", mUnstuckTimer.Expired() ? "expired" : ""));
+    //showText(0.5f, 0.050f, 0.5f, fmt("Stuck count %d", mStuckCount));
+    //showText(0.5f, 0.075f, 0.5f, fmt("StuckT %d", mStuckTimer.Elapsed()));
+    //showText(0.5f, 0.100f, 0.5f, fmt("UnstuckT %d", mUnstuckTimer.Elapsed()));
+    //showText(0.5f, 0.125f, 0.5f, fmt("Outside for %d ms", mOutsideTimer.Elapsed()));
 }
 
 Vehicle Racer::GetVehicle() {

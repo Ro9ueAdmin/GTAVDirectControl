@@ -144,14 +144,14 @@ protected:
      */
     void updateAux();
 
-
-    /**
-     * \brief                   Reset the stuck counters
-     */
-    void resetStuckState(bool resetStuckCount);
-
     /**
      * \brief                   Update stuck detection timer.
+     * 
+     *                          4 timers are used:
+     *                          Timer to get for how long AI is stuck.
+     *                          Timer for how long to reverse (unstuck), after previous expired.
+     *                          Timer for unstuck attempts within amount of time.
+     *                          Timer to determine AI out-of-track duration.
      * \param [in] coords       Used to not unstuck while there's no track.
      */
     void updateStuck(const std::vector<Point> &coords);
@@ -186,7 +186,20 @@ protected:
      */
     Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
                                 std::string &overtakeReason);
+
+    /**
+     * \brief                   Get predicted "apex" at a given coordinate on the track.
+     * \param [in] coords       List of track coords
+     * \param [in] idx          Index to calculate "apex" of
+     * \return                  Distance from center towards that perceived apex
+     */
     float avgCenterDiff(const std::vector<Point>& coords, uint32_t idx);
+
+    /**
+     * \brief                   Teleport to node on track closest to AI.
+     * \param [in] coords       List of track coords
+     */
+    void teleportToClosestNode(const std::vector<Point>& coords);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
     std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.
@@ -197,19 +210,13 @@ protected:
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
 
-    DWORD mAuxPeriod;               // Period to check update auxiliaries. Randomized every period.
-    DWORD mAuxPrevTick;             // Previous time auxiliaries were updated.
-
-    const int mStuckTimeThreshold;  // Time in milliseconds the vehicle doesn't move to start unstuck procedure.
-    DWORD mStuckStarted;            // Time unstuck procedure is started.
-    bool mIsStuck;                  // Stuck state.
-
+    Timer mAuxTimer;                // Auxiliaries update timer. Period randomizes each period.
+    Timer mStuckTimer;              // Start counting when stuck
+    Timer mUnstuckTimer;            // Start counting when mStuckTimer expires
     const int mStuckCountThreshold; // Number of times unstuck is allowed within that time window.
-    const int mStuckCountTime;      // Time window in milliseconds to remember previous unstuck attempts within.
-    int mStuckCountStarted;         // Time previous stuck count was reset.
     int mStuckCount;                // Number of times unstuck was started last mStuckCountTime seconds.
-
-    Timer mOutsideTimer;            // Out-of-lap timer
+    Timer mStuckCountTimer;         // Start counting when mStuckCount > 0 (for unstuck attempts in period)
+    Timer mOutsideTimer;            // Start counting when outside track limits
 
     float mCDistPrev = 0.0f;
 };
