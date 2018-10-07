@@ -4,7 +4,12 @@
 #include <iomanip>
 #include <filesystem>
 #include <thirdparty/json.hpp>
+
+#pragma warning( push )  
+#pragma warning( disable : 4244 )
+#pragma warning( disable : 4996 )
 #include <thirdparty/xml2json.hpp>
+#pragma warning( pop )
 
 #include "Memory/VehicleExtensions.hpp"
 #include "XInputControl.h"
