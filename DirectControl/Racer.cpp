@@ -44,10 +44,11 @@ Racer::Racer(Vehicle vehicle) : mVehicle(vehicle)
                               , mOutsideTimer(7500) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
-    mBlip->SetSprite(BlipSpritePersonalVehicleCar);
+    mBlip->SetSprite(BlipSpriteStandard);
     mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
+    mBlip->ShowHeading(true);
 }
 
 Racer::Racer(Racer &&other) noexcept : mVehicle(other.mVehicle)
@@ -68,10 +69,11 @@ Racer::Racer(Racer &&other) noexcept : mVehicle(other.mVehicle)
                                      , mOutsideTimer(other.mOutsideTimer) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
     mBlip = std::make_unique<BlipX>(mVehicle);
-    mBlip->SetSprite(BlipSpritePersonalVehicleCar);
+    mBlip->SetSprite(BlipSpriteStandard);
     mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
                        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip->SetColor(BlipColorYellow);
+    mBlip->ShowHeading(true);
     other.mVehicle = 0;
 }
 
@@ -79,9 +81,10 @@ Racer & Racer::operator=(Racer &&other) noexcept {
     if (this != &other) {
         mVehicle = other.mVehicle;
         mBlip = std::make_unique<BlipX>(mVehicle);
-        mBlip->SetSprite(BlipSpritePersonalVehicleCar);
+        mBlip->SetSprite(BlipSpriteStandard);
         mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
         mBlip->SetColor(BlipColorYellow);
+        mBlip->ShowHeading(true);
         other.mVehicle = 0;
     }
     return *this;

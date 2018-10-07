@@ -73,6 +73,10 @@ public:
         return mHandle;
     }
 
+    void ShowHeading(bool b) {
+        UI::SHOW_HEADING_INDICATOR_ON_BLIP(mHandle, b);
+    }
+
 private:
     int mHandle;
     Entity mEntity;
