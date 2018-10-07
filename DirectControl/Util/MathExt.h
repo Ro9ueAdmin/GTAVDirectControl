@@ -19,13 +19,19 @@ float lerp(float a, float b, float f);
 float Length(Vector3 vec);
 float Distance(Vector3 vec1, Vector3 vec2);
 Vector3 Cross(Vector3 left, Vector3 right);
+float Dot(Vector3 a, Vector3 b);
 Vector3 operator + (Vector3 left, Vector3 right);
 Vector3 operator - (Vector3 left, Vector3 right);
 Vector3 operator * (Vector3 value, float scale);
 Vector3 operator * (float scale, Vector3 vec);
+bool operator== (Vector3 a, Vector3 b);
 Vector3 Normalize(Vector3 vec);
 Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forward, Vector3 offset);
+float GetAngleBetween(Vector3 a, Vector3 b);
 float GetAngleBetween(float h1, float h2, float separation);
+
+// Return true if line segments AB and CD intersect
+bool Intersect(Vector3 A, Vector3 B, Vector3 C, Vector3 D);
 
 inline float rad2deg(float rad) {
     return (rad*(180.0f / 3.14159265358979323846264338327950288f));
@@ -40,9 +46,10 @@ T map(T x, T in_min, T in_max, T out_min, T out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-template <typename T>
-T constrain(T x, T min, T max) {
-    if (x > max) return max;
-    if (x < min) return min;
-    return x;
-}
+int GetRand(int min, int mod);
+
+Vector3 GetEntityDimensions(Entity e);
+
+Vector3 GetModelDimensions(Hash model);
+
+Vector3 GetPerpendicular(Vector3 a, Vector3 b, float length, bool clockwise);

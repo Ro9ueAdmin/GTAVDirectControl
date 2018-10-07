@@ -11,16 +11,17 @@ http://dev-c.com
 
 BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
     const char* logFile = "./DirectControl.log";
-    logger.SetFile(logFile);
-    logger.SetMinLevel(DEBUG);
+    gLogger.SetFile(logFile);
+    gLogger.SetMinLevel(DEBUG);
 
     switch (reason) {
     case DLL_PROCESS_ATTACH: {
-        logger.Clear();
-        logger.Write(INFO, "DirectControl %s (build %s %s)", "v0.0.0", __DATE__, __TIME__);
-        logger.Write(INFO, "Game version " + eGameVersionToString(getGameVersion()));
-        logger.Write(INFO, "");
+        gLogger.Clear();
+        gLogger.Write(INFO, "DirectControl %s (build %s %s)", "v0.0.0", __DATE__, __TIME__);
+        gLogger.Write(INFO, "Game version " + eGameVersionToString(getGameVersion()));
+        gLogger.Write(INFO, "");
         scriptRegister(hInstance, ScriptMain);
+        scriptRegisterAdditionalThread(hInstance, CheatMain);
         break;
     }
     case DLL_PROCESS_DETACH: {
