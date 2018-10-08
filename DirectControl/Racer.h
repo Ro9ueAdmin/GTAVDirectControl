@@ -28,15 +28,6 @@ public:
      */
     explicit Racer(Vehicle vehicle);
 
-    // non-copyable
-    Racer(const Racer& other) = delete;
-    Racer& operator= (const Racer& other) = delete;
-
-    // move
-    Racer(Racer&& other) noexcept;
-    Racer& operator= (Racer&& other) noexcept;
-
-
     /**
      * \brief                   Cleans up the resources.
      * 
@@ -239,7 +230,7 @@ protected:
     void displayDebugInfo(const Racer::InputInfo& inputs, const DebugInfo& dbgInfo);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
-    std::unique_ptr<BlipX> mBlip;   // Blip attached to racer vehicle.
+    BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
 

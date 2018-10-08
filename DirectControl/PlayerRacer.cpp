@@ -9,14 +9,8 @@
 PlayerRacer::PlayerRacer(Vehicle vehicle, int playerNumber) :
     Racer(vehicle),
     mXInput(playerNumber) {
-    if (mBlip) {
-        mBlip->Delete();
-        mBlip.reset(nullptr);
-    }
-    mBlip = std::make_unique<BlipX>(mVehicle);
-    mBlip->SetSprite(BlipSpritePersonalVehicleCar);
-    mBlip->SetName(fmt("Player %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
-    mBlip->SetColor(BlipColorWhite);
+    mBlip.SetName(fmt("Player %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip.SetColor(BlipColorWhite);
 }
 
 void PlayerRacer::UpdateControl() {

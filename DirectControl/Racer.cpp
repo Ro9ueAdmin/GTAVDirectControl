@@ -28,6 +28,8 @@ const std::vector<Hash> headLightsOnWeathers = {
 
 Racer::Racer(Vehicle vehicle)
     : mVehicle(vehicle)
+    , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
+        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
     , mActive(gSettings.AIDefaultActive)
     , mDebugView(gSettings.AIShowDebug)
     , mPrevPointIdx(0)
@@ -41,49 +43,6 @@ Racer::Racer(Vehicle vehicle)
     , mStuckCountTimer(30000)
     , mOutsideTimer(10000) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
-    mBlip = std::make_unique<BlipX>(mVehicle);
-    mBlip->SetSprite(BlipSpriteStandard);
-    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                       VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
-    mBlip->SetColor(BlipColorYellow);
-    mBlip->ShowHeading(true);
-}
-
-Racer::Racer(Racer &&other) noexcept
-    : mVehicle(other.mVehicle)
-    , mActive(other.mActive)
-    , mDebugView(other.mDebugView)
-    , mPrevPointIdx(other.mPrevPointIdx)
-    , mLapTimer(other.mLapTimer)
-    , mLapTime(other.mLapTime)
-    , mAuxTimer(other.mAuxTimer)
-    , mStuckTimer(other.mStuckTimer)
-    , mUnstuckTimer(other.mUnstuckTimer)
-    , mStuckCountThreshold(other.mStuckCountThreshold)
-    , mStuckCount(other.mStuckCount)
-    , mStuckCountTimer(other.mStuckCountTimer)
-    , mOutsideTimer(other.mOutsideTimer) {
-    ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
-    mBlip = std::make_unique<BlipX>(mVehicle);
-    mBlip->SetSprite(BlipSpriteStandard);
-    mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                       VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
-    mBlip->SetColor(BlipColorYellow);
-    mBlip->ShowHeading(true);
-    other.mVehicle = 0;
-}
-
-Racer & Racer::operator=(Racer &&other) noexcept {
-    if (this != &other) {
-        mVehicle = other.mVehicle;
-        mBlip = std::make_unique<BlipX>(mVehicle);
-        mBlip->SetSprite(BlipSpriteStandard);
-        mBlip->SetName(fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
-        mBlip->SetColor(BlipColorYellow);
-        mBlip->ShowHeading(true);
-        other.mVehicle = 0;
-    }
-    return *this;
 }
 
 Racer::~Racer() {
@@ -94,10 +53,6 @@ Racer::~Racer() {
         gExt.SetHandbrake(mVehicle, false);
         ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
         ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
-    }
-    if (mBlip) {
-        mBlip->Delete();
-        mBlip.reset(nullptr);
     }
 }
 

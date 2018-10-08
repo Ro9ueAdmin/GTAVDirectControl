@@ -28,7 +28,7 @@ using json = nlohmann::json;
 bool gRecording = false;
 
 std::vector<Point> gTrackCoords;
-std::vector<Racer> gRacers;
+std::vector<std::unique_ptr<Racer>> gRacers;
 std::unique_ptr<PlayerRacer> gPlayerRacer(nullptr);
 
 Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bool managed) {
@@ -74,7 +74,7 @@ void UpdateAI(){
     }
 
     for (auto& racer : gRacers) {
-        racer.UpdateControl(gTrackCoords, npcs);
+        racer->UpdateControl(gTrackCoords, npcs);
     }
 
     if (gRecording) {
@@ -162,7 +162,7 @@ void UpdateCheats() {
         if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
             auto itFound = gRacers.end();
             for (auto it = gRacers.begin(); it != gRacers.end(); ++it) {
-                if (it->GetVehicle() == vehicle) {
+                if ((*it)->GetVehicle() == vehicle) {
                     itFound = it;
                 }
             }
@@ -183,12 +183,12 @@ void UpdateCheats() {
         if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
             bool found = false;
             for (auto &gRacer : gRacers) {
-                if (gRacer.GetVehicle() == vehicle) {
+                if (gRacer->GetVehicle() == vehicle) {
                     found = true;
                 }
             }
             if (!found) {
-                gRacers.emplace_back(vehicle);
+                gRacers.push_back(std::make_unique<Racer>(vehicle));
                 showNotification(fmt("Adding AI to ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
             else {
@@ -254,25 +254,25 @@ void UpdateCheats() {
 
             Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
             Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
-            gRacers.emplace_back(spawnedVehicle);
+            gRacers.push_back(std::make_unique<Racer>(spawnedVehicle));
         }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("startai"))) {
         for (auto& racer : gRacers) {
-            racer.SetActive(true);
+            racer->SetActive(true);
         }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("stopai"))) {
         for (auto& racer : gRacers) {
-            racer.SetActive(false);
+            racer->SetActive(false);
         }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("fixai"))) {
         for (auto& racer : gRacers) {
-            Vehicle v = racer.GetVehicle();
+            Vehicle v = racer->GetVehicle();
             VEHICLE::SET_VEHICLE_FIXED(v);
             // TODO: Use vehicle broken flag?
             //auto address = getScriptHandleBaseAddress(vehicle); 
@@ -287,14 +287,14 @@ void UpdateCheats() {
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgai0"))) {
         showNotification("Disable debug view for racers");
         for (auto& racer : gRacers) {
-            racer.SetDebugView(false);
+            racer->SetDebugView(false);
         }
     }
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgai1"))) {
         showNotification("Enable debug view for racers");
         for (auto& racer : gRacers) {
-            racer.SetDebugView(true);
+            racer->SetDebugView(true);
         }
     }
 
@@ -305,9 +305,9 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("dbgthis"))) {
         for (auto& racer : gRacers) {
-            if (racer.GetVehicle() == vehicle) {
+            if (racer->GetVehicle() == vehicle) {
                 showNotification("Toggle debug for current");
-                racer.SetDebugView(!racer.GetDebugView());
+                racer->SetDebugView(!racer->GetDebugView());
                 break;
             }
         }

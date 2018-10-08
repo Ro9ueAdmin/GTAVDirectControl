@@ -6,8 +6,17 @@
 
 class BlipX {
 public:
-    BlipX(Entity entity) : mEntity(entity) {
-        mHandle = UI::ADD_BLIP_FOR_ENTITY(entity);
+    BlipX(Entity entity, eBlipSprite blip, std::string name, eBlipColor color, bool showHeading)
+        : mHandle(UI::ADD_BLIP_FOR_ENTITY(entity))
+        , mEntity(entity){
+        SetSprite(blip);
+        SetName(name);
+        SetColor(color);
+        ShowHeading(showHeading);
+    }
+
+    ~BlipX() {
+        Delete();
     }
 
     Vector3 GetPosition() const {
