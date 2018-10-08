@@ -8,7 +8,8 @@ class BlipX {
 public:
     BlipX(Entity entity, eBlipSprite blip, std::string name, eBlipColor color, bool showHeading)
         : mHandle(UI::ADD_BLIP_FOR_ENTITY(entity))
-        , mEntity(entity){
+        , mEntity(entity) 
+        , mName(name) {
         SetSprite(blip);
         SetName(name);
         SetColor(color);
@@ -63,6 +64,10 @@ public:
         return mEntity;// UI::GET_BLIP_INFO_ID_ENTITY_INDEX(mHandle);
     }
 
+    std::string GetName() {
+        return mName;
+    }
+
     void SetName(std::string name) {
         UI::BEGIN_TEXT_COMMAND_SET_BLIP_NAME("STRING");
         UI::ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME((char*)name.c_str());
@@ -89,4 +94,5 @@ public:
 private:
     int mHandle;
     Entity mEntity;
+    std::string mName;
 };

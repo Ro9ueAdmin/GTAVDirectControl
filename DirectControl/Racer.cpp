@@ -637,9 +637,13 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 void Racer::updateStatus() {
     if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle)) {
         mBlip.SetSprite(BlipSpriteDead);
+        mBlip.SetColor(BlipColorRed);
+        mBlip.SetName(mBlip.GetName());
     }
     else {
         mBlip.SetSprite(BlipSpriteStandard);
+        mBlip.SetColor(BlipColorYellow);
+        mBlip.SetName(mBlip.GetName());
     }
 }
 
