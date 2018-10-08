@@ -160,7 +160,8 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
     return {};
 }
 
-Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc, std::string &overtakeReason) {
+Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc, Racer::
+                                   OvertakeSource& overtakeReason) {
     Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
 
@@ -236,7 +237,7 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
 
         if (overtakePointAngle == overtakePointCenter) {
             // No conflict, commit!
-            overtakeReason = "Both: All clear!";
+            overtakeReason = OvertakeSource::Normal;
             overtakePoint = overtakePointAngle;
         }
         else {
@@ -261,11 +262,11 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
                 Intersect(aiPosition, overtakePointAngle, offWLeftFront, offWRightRear) ||
                 overtakePointAngleDist > overtakePointAngleWidth) {
                 overtakePoint = overtakePointCenter;
-                overtakeReason = "Track center";
+                overtakeReason = OvertakeSource::Track;
             }
             else {
                 overtakePoint = overtakePointAngle;
-                overtakeReason = "Angle";
+                overtakeReason = OvertakeSource::Angle;
             }
         }
 
@@ -320,11 +321,6 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     if (!mActive)
         return;
 
-    std::string dbgThrottleSrc;
-    std::string dbgBrakeSrc;
-    std::string dbgSteerSrc;
-    std::string dbgOvertakeSrc = "N/A";
-
     Vector3 aiVelocity = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
     Vector3 aiForward = aiPosition + ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
@@ -346,11 +342,11 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     uint32_t throttleIdx;
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgThrottleSrc, throttleIdx);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgBrakeSrc);
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgInfo.laSrcThrottle, throttleIdx);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgInfo.laSrcBrake);
 
     uint32_t steerIdx;
-    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgSteerSrc, steerIdx);
+    Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgInfo.laSrcSteer, steerIdx);
     Vector3 origPosSteer = nextPositionSteer;
     {
         Vector3 steerA = coords[(steerIdx + 0) % coords.size()].v;
@@ -370,7 +366,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     }
 
     if (overtakePoints.size() == 2) {
-        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgOvertakeSrc);
+        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgInfo.overtakeSource);
         if (Length(overtakePoint) > 0.0f)
             nextPositionSteer = overtakePoint;
     }
@@ -771,13 +767,13 @@ Vehicle Racer::GetVehicle() {
 }
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
-    float lookAheadDistance, float actualAngle, std::string &source) {
+                        float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source) {
     uint32_t discard;
     return getCoord(coords, lookAheadDistance, actualAngle, source, discard);
 }
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
-                        float lookAheadDistance, float actualAngle, std::string &source, uint32_t& index) {
+                        float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source, uint32_t& index) {
     float smallestToLa = 9999.9f;
     int smallestToLaIdx = 0;
     float smallestToAi = 9999.9f;
@@ -806,7 +802,7 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
     }
 
     int returnIndex = smallestToLaIdx;
-    source = "normal";
+    source = LookAheadSource::Normal;
 
     // Only consider viable nodes, to not cut the track. 
     // Significant overshoot still makes AI choose closest track node, 
@@ -818,12 +814,12 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
         smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
         // Ensure track is followed continuously (no cutting off entire sections)
         returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
-        source = "continuous";
+        source = LookAheadSource::Continuous;
     }
     else if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
         // Ensure going forwards
         returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
-        source = "forwards";
+        source = LookAheadSource::Forward;
     }
     index = returnIndex;
     return coords[returnIndex].v;

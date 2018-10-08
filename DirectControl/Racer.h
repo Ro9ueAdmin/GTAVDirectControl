@@ -78,6 +78,24 @@ public:
     bool GetDebugView();
 protected:
     /**
+     * \brief                   Source of look-ahead point. Used in getCoord().
+     */
+    enum class LookAheadSource {
+        Normal,                 // Normal point near lookahead
+        Continuous,             // Avoid cutting track, lookahead of distNodes.
+        Forward                 // Start/Finish transition
+    };
+
+    /**
+     * \brief                   Source of overtaking points. Used in chooseOvertakePoint().
+     */
+    enum class OvertakeSource {
+        Normal,                 // Chosen point is both on track and is smallest angle
+        Track,                  // Chosen point is on track
+        Angle                   // Chosen point has smallest angle
+    };
+
+    /**
      * \brief                   Container to pass through input info
      */
     struct InputInfo {
@@ -101,6 +119,10 @@ protected:
         bool oversteerCompensateSteer;
         bool understeering;
         int trackLimits;
+        LookAheadSource laSrcThrottle;
+        LookAheadSource laSrcBrake;
+        LookAheadSource laSrcSteer;
+        OvertakeSource overtakeSource;
     };
 
     /**
@@ -124,9 +146,9 @@ protected:
      * \param [out] source              Debug info containing which mode was used for choosing the coordinate.
      * \return                          Chosen coordinate from the list.
      */
-    Vector3 getCoord(const std::vector<Point>& coords, float lookAheadDistance, float actualAngle, std::string& source);
+    Vector3 getCoord(const std::vector<Point>& coords, float lookAheadDistance, float actualAngle, LookAheadSource& source);
     Vector3 getCoord(const std::vector<Point> &coords, float lookAheadDistance,
-                     float actualAngle, std::string &source, uint32_t& index);
+                     float actualAngle, LookAheadSource& source, uint32_t& index);
 
     /**
      * \brief                   Calculate average angle of the steered wheels.
@@ -206,7 +228,7 @@ protected:
      * \param [out] overtakeReason  Logic source of overtake point
      */
     Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
-                                std::string &overtakeReason);
+                                OvertakeSource& overtakeReason);
 
     /**
      * \brief                   Get predicted "apex" at a given coordinate on the track.
