@@ -35,6 +35,7 @@ Racer::Racer(Vehicle vehicle)
     , mPrevPointIdx(0)
     , mLapTimer(0)
     , mLapTime(0)
+    , mStatusTimer(GetRand(10000, 2000))
     , mAuxTimer(GetRand(2000, 10000))
     , mStuckTimer(2000)
     , mUnstuckTimer(1000)
@@ -578,6 +579,11 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 }
 
 void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
+    if (mStatusTimer.Expired()) {
+        mStatusTimer.Reset(GetRand(10000, 2000));
+        updateStatus();
+    }
+
     if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
         return;
 
@@ -626,6 +632,15 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     if (mDebugView)
         displayDebugInfo(inputs, dbgInfo);
+}
+
+void Racer::updateStatus() {
+    if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle)) {
+        mBlip.SetSprite(BlipSpriteDead);
+    }
+    else {
+        mBlip.SetSprite(BlipSpriteStandard);
+    }
 }
 
 void Racer::updateLapTimers(const std::vector<Point>& points) {

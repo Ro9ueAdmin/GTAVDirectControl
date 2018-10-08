@@ -177,6 +177,11 @@ protected:
                                   float reduction);
 
     /**
+     * \brief                   Update very periodic things like blips.
+     */
+    void updateStatus();
+
+    /**
      * \brief                   Update lap timing
      * \param [in] points       List of track coords
      */
@@ -260,6 +265,7 @@ protected:
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
 
+    Timer mStatusTimer;             // Status updater for things that need not be real-time.
     Timer mAuxTimer;                // Auxiliaries update timer. Period randomizes each period.
     Timer mStuckTimer;              // Start counting when stuck
     Timer mUnstuckTimer;            // Start counting when mStuckTimer expires
@@ -268,5 +274,5 @@ protected:
     Timer mStuckCountTimer;         // Start counting when mStuckCount > 0 (for unstuck attempts in period)
     Timer mOutsideTimer;            // Start counting when outside track limits
 
-    float mCDistPrev = 0.0f;
+    float mCDistPrev;               // Previous center-distance value, for lerp steer target.
 };
