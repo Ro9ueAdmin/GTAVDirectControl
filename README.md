@@ -1,10 +1,7 @@
 GTA V Direct Control test
 ===========
 
-Just a small test project to mess around with controlling cars without 
-going through GTA's control thing.
-Experiments to try getting more fine-tuned control over all aspects, from
-inputs to stability control etc.
+<content update test 1>
 
 Building
 ====
