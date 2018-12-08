@@ -2,7 +2,8 @@
 #include <inc/types.h>
 #include <vector>
 
-template <typename T> int sgn(T val) {
+template <typename T>
+constexpr int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
@@ -33,16 +34,18 @@ float GetAngleBetween(float h1, float h2, float separation);
 // Return true if line segments AB and CD intersect
 bool Intersect(Vector3 A, Vector3 B, Vector3 C, Vector3 D);
 
-inline float rad2deg(float rad) {
-    return (rad*(180.0f / 3.14159265358979323846264338327950288f));
-}
-
-inline float deg2rad(float deg) {
-    return (deg*3.14159265358979323846264338327950288f / 180.0f);
+template <typename T>
+constexpr T rad2deg(T rad) {
+    return static_cast<T>(static_cast<double>(rad) * (180.0 / 3.141592653589793238463));
 }
 
 template <typename T>
-T map(T x, T in_min, T in_max, T out_min, T out_max) {
+constexpr T deg2rad(T deg) {
+    return static_cast<T>(static_cast<double>(deg) * 3.141592653589793238463 / 180.0);
+}
+
+template <typename T>
+constexpr T map(T x, T in_min, T in_max, T out_min, T out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
