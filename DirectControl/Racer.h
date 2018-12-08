@@ -90,9 +90,11 @@ protected:
      * \brief                   Source of overtaking points. Used in chooseOvertakePoint().
      */
     enum class OvertakeSource {
+        None,
         Normal,                 // Chosen point is both on track and is smallest angle
         Track,                  // Chosen point is on track
-        Angle                   // Chosen point has smallest angle
+        Angle,                   // Chosen point has smallest angle
+        Trail
     };
 
     /**
@@ -262,8 +264,10 @@ protected:
     bool mDebugView;                // Debug information display state.
 
     int mPrevPointIdx;              // For lap timing
+    int64_t mTrackIdx;              // TODO: Lap timing & keeping track of things
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
+    int64_t mCurrentLap;            // What lap is AI on?
 
     Timer mStatusTimer;             // Status updater for things that need not be real-time.
     Timer mAuxTimer;                // Auxiliaries update timer. Period randomizes each period.

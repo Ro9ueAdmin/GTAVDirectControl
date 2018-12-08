@@ -17,6 +17,7 @@ public:
     }
 
     ~BlipX() {
+        //TODO: Check if game is quitting
         Delete();
     }
 
