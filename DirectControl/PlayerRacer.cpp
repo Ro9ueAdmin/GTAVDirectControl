@@ -47,47 +47,93 @@ void PlayerRacer::UpdateControl() {
     }
 }
 
+void PlayerRacer::getControllerControls(bool& handbrake, float& throttle, float& brake, float& steer) {
+    // Basic input stuff
+    handbrake = mXInput.IsButtonPressed(XInputController::RightShoulder);
+    throttle = mXInput.GetAnalogValue(XInputController::RightTrigger);
+    brake = mXInput.GetAnalogValue(XInputController::LeftTrigger);
+    steer = mXInput.GetAnalogValue(XInputController::LeftThumbLeft);
+    if (steer == 0.0f) steer = -mXInput.GetAnalogValue(XInputController::LeftThumbRight);
+    bool reverseSwitch = mXInput.IsButtonPressed(XInputController::LeftShoulder);
+    if (reverseSwitch)
+        throttle = -mXInput.GetAnalogValue(XInputController::RightTrigger);
+
+    // Fun stuff
+    if (mXInput.IsButtonPressed(XInputController::LeftThumb)) {
+        VEHICLE::START_VEHICLE_HORN(mVehicle, 0, GAMEPLAY::GET_HASH_KEY("HELDDOWN"), false);
+    }
+
+    if (mXInput.IsButtonJustPressed(XInputController::X)) {
+        BOOL areLowBeamsOn, areHighBeamsOn;
+        VEHICLE::GET_VEHICLE_LIGHTS_STATE(mVehicle, &areLowBeamsOn, &areHighBeamsOn);
+        bool areLowBeamsOn_ = areLowBeamsOn == TRUE;
+        VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, !areLowBeamsOn_ ? 3 : 4);
+    }
+
+    if (mXInput.IsButtonPressed(XInputController::A)) {
+        VEHICLE::SET_VEHICLE_FULLBEAM(mVehicle, TRUE);
+    }
+    if (mXInput.IsButtonJustReleased(XInputController::A)) {
+        VEHICLE::SET_VEHICLE_FULLBEAM(mVehicle, FALSE);
+    }
+
+    if (mXInput.WasButtonHeldForMs(XInputController::Y, 500)) {
+        Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::GET_PLAYER_INDEX());
+        if (PED::GET_VEHICLE_PED_IS_IN(playerPed, false) != mVehicle) {
+            Vector3 playerCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
+            Vector3 racerCoords = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+            if (Distance(playerCoords, racerCoords) < 5.0f) {
+                PED::SET_PED_INTO_VEHICLE(playerPed, mVehicle, -2);
+            }
+        }
+    }
+
+    if (mXInput.IsButtonPressed(XInputController::RightThumb)) {
+        Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::GET_PLAYER_INDEX());
+        if (PED::GET_VEHICLE_PED_IS_IN(playerPed, false) == mVehicle) {
+            CONTROLS::_SET_CONTROL_NORMAL(0, ControlVehicleLookBehind, 1.0f);
+        }
+    }
+
+    float buzz = 0.0f;
+    auto effects = gExt.GetWheelSkidSmokeEffect(mVehicle);
+    for (auto effect : effects) {
+        buzz += effect;
+    }
+    buzz = abs(buzz);
+    buzz /= static_cast<float>(effects.size());
+    buzz *= 2000.0f;
+    if (buzz > 65535.0f)
+        buzz = 65535.0f;
+
+    if (buzz > 10.0f) {
+        mXInput.Vibrate(0, static_cast<int>(buzz));
+    }
+    else {
+        mXInput.Vibrate(0, 0);
+    }
+}
+
+void PlayerRacer::getKeyboardControls(bool& handbrake, float& throttle, float& brake, float& steer) {
+    handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
+    throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
+    float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
+    if (reverse > 0.5)
+        throttle = -1.0f;
+
+    brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
+    float left = GetAsyncKeyState('J') & 0x8000 ? 1.0f : 0.0f;
+    float right = GetAsyncKeyState('L') & 0x8000 ? 1.0f : 0.0f;
+    steer = left - right;
+}
+
 void PlayerRacer::getControls(bool& handbrake, float& throttle, float& brake, float& steer) {
     mXInput.Update();
     if (mXInput.IsAvailable()) {
-        handbrake = mXInput.IsButtonPressed(XInputController::RightShoulder);
-        throttle = mXInput.GetAnalogValue(XInputController::RightTrigger);
-        brake = mXInput.GetAnalogValue(XInputController::LeftTrigger);
-        steer = mXInput.GetAnalogValue(XInputController::LeftThumbLeft);
-        if (steer == 0.0f) steer = -mXInput.GetAnalogValue(XInputController::LeftThumbRight);
-        bool reverseSwitch = mXInput.IsButtonPressed(XInputController::LeftShoulder);
-        if (reverseSwitch)
-            throttle = -mXInput.GetAnalogValue(XInputController::RightTrigger);
-
-        float buzz = 0.0f;
-        auto effects = gExt.GetWheelSkidSmokeEffect(mVehicle);
-        for (auto effect : effects) {
-            buzz += effect;
-        }
-        buzz = abs(buzz);
-        buzz /= (float)effects.size();
-        buzz *= 2000.0f;
-        if (buzz > 65535.0f)
-            buzz = 65535.0f;
-
-        if (buzz > 10.0f) {
-            mXInput.Vibrate((int)buzz, (int)buzz);
-        }
-        else {
-            mXInput.Vibrate(0, 0);
-        }
+        getControllerControls(handbrake, throttle, brake, steer);
     }
     else {
-        handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
-        throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
-        float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
-        if (reverse > 0.5)
-            throttle = -1.0f;
-
-        brake = GetAsyncKeyState('K') & 0x8000 ? 1.0f : 0.0f;
-        float left = GetAsyncKeyState('J') & 0x8000 ? 1.0f : 0.0f;
-        float right = GetAsyncKeyState('L') & 0x8000 ? 1.0f : 0.0f;
-        steer = left - right;
+        getKeyboardControls(handbrake, throttle, brake, steer);
     }
 }
 
@@ -134,7 +180,7 @@ void PlayerRacer::drawDebugLines(float steeringAngle, float nextAngle) {
     Vector3 rot{};
     rot.y = 90.0f;
 
-    Color c{
+    Color c = {
         0,
         0,
         255,
