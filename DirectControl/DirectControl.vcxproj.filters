@@ -85,6 +85,9 @@
     <ClInclude Include="Util\Timer.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="Memory\Versions.h">
+      <Filter>MannyTranny</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">

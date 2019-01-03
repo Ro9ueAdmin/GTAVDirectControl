@@ -172,6 +172,7 @@
     <ClInclude Include="Memory\NativeMemory.hpp" />
     <ClInclude Include="Memory\Offsets.hpp" />
     <ClInclude Include="Memory\VehicleExtensions.hpp" />
+    <ClInclude Include="Memory\Versions.h" />
     <ClInclude Include="PlayerRacer.h" />
     <ClInclude Include="Racer.h" />
     <ClInclude Include="script.h" />
