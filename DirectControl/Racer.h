@@ -120,7 +120,9 @@ protected:
         bool oversteerCompensateThrottle;
         bool oversteerCompensateSteer;
         bool understeering;
+        bool abs;
         int trackLimits;
+        int trackLimitsInside;
         LookAheadSource laSrcThrottle;
         LookAheadSource laSrcBrake;
         LookAheadSource laSrcSteer;
@@ -149,6 +151,7 @@ protected:
      * \return                          Chosen coordinate from the list.
      */
     Vector3 getCoord(const std::vector<Point>& coords, float lookAheadDistance, float actualAngle, LookAheadSource& source);
+    Point getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 coord, uint32_t& outIndex);
     Vector3 getCoord(const std::vector<Point> &coords, float lookAheadDistance,
                      float actualAngle, LookAheadSource& source, uint32_t& index);
 

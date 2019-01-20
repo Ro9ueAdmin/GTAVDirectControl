@@ -485,62 +485,63 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     // Track limits
     {
-        Vector3 overshootCoord = (nextPositionVelocity + turnWorld) * 0.5f;
-        bool inside = false;
-        if (Distance(overshootCoord, nextPositionSteer) < Distance(overshootCoord, origPosSteer)) {
-            //showText(0.5f, 0.01f, 1.0f, "Inside");
-            inside = true;
-        }
-        else {
-            //showText(0.5f, 0.01f, 1.0f, "Outside");
-        }
 
-        float smallestDistanceVelocity = 10000.0f;
-        float smallestDistanceRotation = 10000.0f;
-        float smallestDistanceAI = 10000.0f;
-        Point turnTrackClosest{};
-        for (auto& point : coords) {
-            Vector3 coord = point.v;
-            float distanceVel = Distance(nextPositionVelocity, coord);
-            float distanceRot = Distance(turnWorld, coord);
-            float distanceAI = Distance(aiPosition, coord);
-            if (distanceVel < smallestDistanceVelocity) {
-                smallestDistanceVelocity = distanceVel;
-            }
-            if (distanceRot < smallestDistanceRotation) {
-                smallestDistanceRotation = distanceRot;
-                turnTrackClosest = point;
-            }
-            if (distanceAI < smallestDistanceAI) {
-                smallestDistanceAI = distanceAI;
-            }
-        }
+        Vector3 predictedPos = (nextPositionVelocity + turnWorld) * 0.5f;
+        uint32_t idx = coords.size();
+        Point trackClosestPred = getTrackCoordNearCoord(coords, predictedPos, idx);
+        uint32_t x;
+        auto trackClosestAi = getTrackCoordNearCoord(coords, aiPosition, x);
+        if (Distance(aiPosition, trackClosestAi.v) < trackClosestAi.w * 2.0f) {
 
-        float overshoot = (smallestDistanceVelocity + smallestDistanceRotation) / 2.0f - turnTrackClosest.w;
+            // TODO: handle idx == coords.size();
 
-        if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && !inside && 
-            smallestDistanceAI < turnTrackClosest.w * 1.5f && aiSpeed > 5.0f) {
-            dbgInfo.trackLimits = 1;
-            inputs.throttle *= std::clamp(
-                map(overshoot, 
-                    gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot, 
-                    gSettings.AITrackLimitsThrottleMultMinOvershoot, gSettings.AITrackLimitsThrottleMultMaxOvershoot)
-                , 0.0f, 1.0f
-            );
-            turnSteer *= map(overshoot, 
-                gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
-                gSettings.AITrackLimitsSteerMultMinOvershoot, gSettings.AITrackLimitsSteerMultMaxOvershoot);
-            if (overshoot > gSettings.AITrackLimitsAdjustMaxOvershoot) {
-                float overshootBrake = map(overshoot,
-                    gSettings.AITrackLimitsAdjustMaxOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot * 2.0f,
-                    0.0f, 1.0f);
-                if (overshootBrake > maxBrake) {
-                    maxBrake = overshootBrake;
-                    inputs.throttle = 0.0f;
-                    dbgInfo.trackLimits = 2;
+            // This width offset is always closer to the track edge on the inside of the corner, than the center.
+            float yeet = avgCenterDiff(coords, idx);
+            Vector3 yeetV = GetPerpendicular(coords[idx].v, coords[(idx + 1) % coords.size()].v, yeet, false);
+
+            // Are we on the inside of a corner?
+            bool inside = Distance(predictedPos, yeetV) < Distance(predictedPos, trackClosestPred.v) &&
+                Distance(trackClosestPred.v, yeetV) < Distance(trackClosestPred.v, predictedPos);
+
+            dbgInfo.trackLimitsInside = inside;
+
+            // Negative: Inside track. Positive: Outside track.
+            float overshoot = Distance(predictedPos, trackClosestPred.v) - trackClosestPred.w;
+
+            if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && !inside &&
+                /*smallestDistanceAI < turnTrackClosest.w * 1.5f &&*/ aiSpeed > 5.0f) {
+                dbgInfo.trackLimits = 1;
+                inputs.throttle *= std::clamp(
+                    map(overshoot,
+                        gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
+                        gSettings.AITrackLimitsThrottleMultMinOvershoot, gSettings.AITrackLimitsThrottleMultMaxOvershoot)
+                    , 0.0f, 1.0f
+                );
+                turnSteer *= map(overshoot,
+                    gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
+                    gSettings.AITrackLimitsSteerMultMinOvershoot, gSettings.AITrackLimitsSteerMultMaxOvershoot);
+                if (overshoot > gSettings.AITrackLimitsAdjustMaxOvershoot) {
+                    float overshootBrake = map(overshoot,
+                        gSettings.AITrackLimitsAdjustMaxOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot * 2.0f,
+                        0.0f, 1.0f);
+                    if (overshootBrake > maxBrake) {
+                        maxBrake = overshootBrake;
+                        inputs.throttle = 0.0f;
+                        dbgInfo.trackLimits = 2;
+                    }
                 }
             }
+            if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && inside && aiSpeed > 5.0f) {
+                dbgInfo.trackLimits = 1;
+                turnSteer *=
+                    std::clamp(
+                        map(overshoot,
+                            0.0f, gSettings.AITrackLimitsAdjustMinOvershoot,
+                            1.0f, 0.0f)
+                        , 0.0f, 1.0f);
+            }
         }
+
     }
 
     // TODO: Clean up, consider braking _earlier_ instead of _harder_.
@@ -649,8 +650,29 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, inputs.steer, reduction);
 
-    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), inputs.throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
-    gExt.SetBrakeP(mVehicle, lerp(gExt.GetBrakeP(mVehicle), inputs.brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f));
+    float finalThrottle = lerp(gExt.GetThrottleP(mVehicle), inputs.throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f);
+    gExt.SetThrottle(mVehicle, finalThrottle);
+    gExt.SetThrottleP(mVehicle, finalThrottle);
+
+    uint8_t numWheels = gExt.GetNumWheels(mVehicle);
+    uint8_t numLockedUp = 0;
+    auto curbrs = gExt.GetWheelBrakePressure(mVehicle);
+    auto comprs = gExt.GetWheelCompressions(mVehicle);
+    auto speeds = gExt.GetWheelRotationSpeeds(mVehicle);
+    if (numWheels >= 4) {        
+        for (uint8_t i = 0; i < 2; ++i) {
+            if (speeds[i] == 0.0f && comprs[i] > 0.0f /*&& curbrs[i] > 0.0f*/) {
+                ++numLockedUp;// = true;
+            }
+        }
+    }
+
+    float finalBrake = lerp(gExt.GetBrakeP(mVehicle), inputs.brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f);
+    if (numLockedUp == numWheels) {
+        finalBrake = finalBrake * 0.25f;
+        dbgInfo.abs = true;
+    }
+    gExt.SetBrakeP(mVehicle, finalBrake);
     if (inputs.brake > 0.15f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
@@ -820,6 +842,24 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
     return getCoord(coords, lookAheadDistance, actualAngle, source, discard);
 }
 
+Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 findCoord, uint32_t& outIndex) {
+    outIndex = trackCoords.size(); // return trackCoords.end() basically
+
+    float smallestDistance = 10000.0f;
+    Point closestPoint{};
+    for (uint32_t i = 0; i < trackCoords.size(); ++i) {
+        const Point& point = trackCoords[i];
+        Vector3 trackCoord = point.v;
+        float distance = Distance(findCoord, trackCoord);
+        if (distance < smallestDistance) {
+            smallestDistance = distance;
+            closestPoint = point;
+            outIndex = i;
+        }
+    }
+    return closestPoint;
+}
+
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
                         float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source, uint32_t& index) {
     float smallestToLa = 9999.9f;
@@ -981,14 +1021,15 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     if (gSettings.AIShowDebugText) {
         Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
         showDebugInfo3D(up2, 10.0f, {
-            fmt("%s(P) %s(ESC)", 
+            fmt("%s(P) %s(ESC) %s(ABS)", 
                 inputs.handbrake ? "~r~" : "~m~", 
-                dbgInfo.oversteerCompensateThrottle || dbgInfo.oversteerCompensateSteer ? "~o~" : "~m~"),
+                dbgInfo.oversteerCompensateThrottle || dbgInfo.oversteerCompensateSteer ? "~o~" : "~m~",
+                dbgInfo.abs ? "~r~" : "~m~"),
             fmt("%sUnder ~m~| %sOver", 
                 dbgInfo.understeering ? "~r~" : "~m~", 
                 dbgInfo.oversteerAngle > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
-            fmt("%sTrack Limits", 
-                dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~"),
+            fmt("%sTrack Limits %s", 
+                dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~", dbgInfo.trackLimitsInside ? "In" : "Out"),
             fmt("%sT: %03d%% ~m~| %sB: %03d%%", 
                 inputs.throttle > 0.5 ? "~g~" : "~m~", 
                 static_cast<int>(inputs.throttle * 100.0f), 
@@ -1002,3 +1043,4 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     //std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
     //std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
 }
+
