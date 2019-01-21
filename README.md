@@ -62,8 +62,7 @@ manoeuvrability.
 
 "Actually just a bunch of `if` statements."
 
-Which it is. Keep it simple, no need for machine learning magic. AI went 
-through a bunch of iterations for different features. This is the 
+AI went through a bunch of iterations for different features. This is the 
 chronological order, which can also be derived from the commit history:
 
 * Basic player stalking to test for stability and code-based inputs.
