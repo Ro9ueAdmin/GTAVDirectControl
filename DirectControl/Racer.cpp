@@ -614,8 +614,9 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         updateStatus();
     }
 
-    if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle))
+    if (mDead) {
         return;
+    }
 
     if (mAuxTimer.Expired()) {
         mAuxTimer.Reset(GetRand(2000, 10000));
@@ -695,6 +696,9 @@ void Racer::updateStatus() {
         mBlip.SetSprite(BlipSpriteStandard);
         mBlip.SetColor(BlipColorYellow);
         mBlip.SetName(mBlip.GetName());
+    }
+    if (!VEHICLE::IS_VEHICLE_DRIVEABLE(mVehicle, 0) || ENTITY::IS_ENTITY_DEAD(mVehicle)) {
+        mDead = true;
     }
 }
 

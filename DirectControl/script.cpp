@@ -278,9 +278,6 @@ void UpdateCheats() {
             VEHICLE::SET_VEHICLE_BODY_HEALTH(v, 1000.0f);
             VEHICLE::SET_VEHICLE_ENGINE_HEALTH(v, 1000.0f);
             VEHICLE::SET_VEHICLE_PETROL_TANK_HEALTH(v, 1000.0f);
-            // TODO: Use vehicle broken flag?
-            //auto address = getScriptHandleBaseAddress(vehicle); 
-            //*(BYTE*)(address + 0xD8) &= ~7;
         }
     }
 

@@ -265,6 +265,7 @@ protected:
     BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
+    bool mDead;                     // Stop processing when dead
 
     int mPrevPointIdx;              // For lap timing
     int64_t mTrackIdx;              // TODO: Lap timing & keeping track of things
