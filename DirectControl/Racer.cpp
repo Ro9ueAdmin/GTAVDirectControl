@@ -944,26 +944,19 @@ float Racer::calculateReduction() {
     return mult;
 }
 
-float Racer::calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
+float Racer::calculateDesiredHeading(float steeringMax, float desiredHeading,
                                      float reduction) {
     float correction = desiredHeading * reduction;
 
     if (abs(ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y) > 3.0f) {
-        Vector3 velocityWorld = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
         Vector3 positionWorld = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
-        Vector3 travelWorld = velocityWorld + positionWorld;
+        Vector3 travelWorld = positionWorld + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
 
-        float steeringAngleRelX = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y * -sin(steeringAngle);
-        float steeringAngleRelY = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y * cos(steeringAngle);
-        Vector3 steeringWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(
-            mVehicle, steeringAngleRelX, steeringAngleRelY, 0.0f);
+        Vector3 target = Normalize(
+            ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, travelWorld.x, travelWorld.y, travelWorld.z));
+        float travelDir = atan2(target.y, target.x) - M_PI/2.0f + desiredHeading * reduction;
 
-        Vector3 travelNorm = Normalize(travelWorld - positionWorld);
-        Vector3 steerNorm = Normalize(steeringWorld - positionWorld);
-        float travelDir = atan2(travelNorm.y, travelNorm.x) + desiredHeading * reduction;
-        float steerDir = atan2(steerNorm.y, steerNorm.x);
-
-        correction = 2.0f * atan2(sin(travelDir - steerDir), cos(travelDir - steerDir));
+        correction = atan2(sin(travelDir), cos(travelDir));
     }
     if (correction > steeringMax)
         correction = steeringMax;
