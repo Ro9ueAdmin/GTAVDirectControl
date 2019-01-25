@@ -8,6 +8,10 @@
 #include "Memory/VehicleExtensions.hpp"
 #include "Settings.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
 //    0x36A83D84, // CLEAR
@@ -29,12 +33,15 @@ const std::vector<Hash> headLightsOnWeathers = {
 Racer::Racer(Vehicle vehicle)
     : mVehicle(vehicle)
     , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-        VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
+                                             VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
     , mActive(gSettings.AIDefaultActive)
     , mDebugView(gSettings.AIShowDebug)
+    , mDead(false)
     , mPrevPointIdx(0)
+    , mTrackIdx(0)
     , mLapTimer(0)
     , mLapTime(0)
+    , mCurrentLap(0)
     , mStatusTimer(GetRand(10000, 2000))
     , mAuxTimer(GetRand(2000, 10000))
     , mStuckTimer(2000)
@@ -42,7 +49,9 @@ Racer::Racer(Vehicle vehicle)
     , mStuckCountThreshold(3)
     , mStuckCount(0)
     , mStuckCountTimer(30000)
-    , mOutsideTimer(10000) {
+    , mOutsideTimer(10000)
+    , mCDistPrev(0)
+    , mSteerPrev(0) {
     ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, true, false);
 }
 
@@ -679,7 +688,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
+    gExt.SetSteeringAngle(mVehicle, desiredHeading);
     gExt.SetHandbrake(mVehicle, inputs.handbrake);
 
     if (mDebugView)
@@ -954,7 +963,15 @@ float Racer::calculateDesiredHeading(float steeringMax, float desiredHeading,
 
         Vector3 target = Normalize(
             ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, travelWorld.x, travelWorld.y, travelWorld.z));
-        float travelDir = atan2(target.y, target.x) - M_PI/2.0f + desiredHeading * reduction;
+        float travelDir = atan2(target.y, target.x) - M_PI / 2.0f;
+        if (travelDir > M_PI / 2.0f) {
+            travelDir -= M_PI;
+        }
+        if (travelDir < -M_PI / 2.0f) {
+            travelDir += M_PI;
+        }
+        travelDir *= sgn(ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y);
+        travelDir += desiredHeading * reduction;
 
         correction = atan2(sin(travelDir), cos(travelDir));
     }

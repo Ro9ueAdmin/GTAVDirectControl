@@ -178,7 +178,7 @@ protected:
      * \param [in] reduction        Steering reduction factor by speed.
      * \return                      Output steering angle (to vehicle).
      */
-    float calculateDesiredHeading(float steeringAngle, float steeringMax, float desiredHeading,
+    float calculateDesiredHeading(float steeringMax, float desiredHeading,
                                   float reduction);
 
     /**
@@ -282,5 +282,7 @@ protected:
     Timer mStuckCountTimer;         // Start counting when mStuckCount > 0 (for unstuck attempts in period)
     Timer mOutsideTimer;            // Start counting when outside track limits
 
+    // lerp'd values
     float mCDistPrev;               // Previous center-distance value, for lerp steer target.
+    float mSteerPrev;               // Previous steering input
 };

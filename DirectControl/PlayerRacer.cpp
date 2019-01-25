@@ -28,10 +28,16 @@ void PlayerRacer::UpdateControl() {
 
     getControls(handbrake, throttle, brake, steer);
 
-    float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, steer, reduction);
+    // Only user input is lerp'd
+    float steerCurr = lerp(
+        mSteerPrev,
+        steer,
+        1.0f - pow(0.0005f, GAMEPLAY::GET_FRAME_TIME()));
+    mSteerPrev = steerCurr;
 
-    gExt.SetThrottleP(mVehicle, lerp(gExt.GetThrottleP(mVehicle), throttle, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
+    float desiredHeading = calculateDesiredHeading(limitRadians, steerCurr, reduction);
 
+    gExt.SetThrottleP(mVehicle, throttle);
     
     gExt.SetBrakeP(mVehicle, brake);
     if (brake > 0.0f)
@@ -39,7 +45,8 @@ void PlayerRacer::UpdateControl() {
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, lerp(actualAngle, desiredHeading, GAMEPLAY::GET_FRAME_TIME() / 0.050f));
+
+    gExt.SetSteeringAngle(mVehicle, desiredHeading);
     gExt.SetHandbrake(mVehicle, handbrake);
 
     if (mDebugView) {
