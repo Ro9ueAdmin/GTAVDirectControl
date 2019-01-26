@@ -487,6 +487,11 @@ void ScriptMain() {
 	main();
 }
 
+void ScriptExit() {
+    gRacers.clear();
+    gPlayerRacer.reset();
+}
+
 void CheatMain() {
     srand(GetTickCount());
 

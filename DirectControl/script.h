@@ -13,4 +13,5 @@ http://dev-c.com
 #include "..\..\ScriptHookV_SDK\inc\main.h"
 
 void ScriptMain();
+void ScriptExit();
 void CheatMain();
