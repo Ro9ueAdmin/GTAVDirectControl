@@ -1,5 +1,8 @@
 #include "Racer.h"
+
+#include <cmath>
 #include <algorithm>
+
 #include <inc/natives.h>
 #include "Util/StringFormat.h"
 #include "Util/MathExt.h"
@@ -7,10 +10,6 @@
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
 #include "Settings.h"
-
-#define _USE_MATH_DEFINES
-#include <math.h>
-
 
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -164,9 +163,9 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
         overtakePoints[2] = npcDirectionWorld;
 
         if (mDebugView) {
-            drawSphere(npcDirectionWorldCW, 0.1250f, { 255, 0, 0, 255 });
-            drawSphere(npcDirectionWorldCCW, 0.1250f, { 0, 0, 255, 255 });
-            drawSphere(npcDirectionWorld, 0.1250f, { 0, 255, 0, 255 });
+            drawSphere(overtakePoints[0], 0.1250f, { 255, 0, 0, 255 });
+            drawSphere(overtakePoints[1], 0.1250f, { 0, 0, 255, 255 });
+            drawSphere(overtakePoints[2], 0.1250f, { 0, 255, 0, 255 });
         }
 
         return overtakePoints;
@@ -218,10 +217,11 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     Vector3 npcNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, ENTITY::GET_ENTITY_SPEED(npc)*-sin(npcNextVRot.z), ENTITY::GET_ENTITY_SPEED(npc)*cos(npcNextVRot.z), 0.0f);
 
 
-    bool intersect = Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f,overtakePoints[0], overtakePoints[1]);
+    bool intersect = Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, overtakePoints[0], overtakePoints[1]);
     intersect |= Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, npcPosition, (npcNextPVel + npcNextPRot) * 0.5f);
 
     if (intersect) {
+        // Check which overtake point has the least relative angle towards our vehicle
         float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
         float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
 
@@ -229,7 +229,7 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         float overtakePointAngleWidth;
 
         Vector3 overtakePointAngle;
-        Vector3 overtakePointCenter;
+        Vector3 overtakePointCenter;        // TODO: What is "center"?
         Vector3 overtakePoint;
         if (angleCW < angleCCW) {
             overtakePointAngle = overtakePoints[0];
@@ -365,10 +365,12 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
 
     uint32_t throttleIdx;
-    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgInfo.laSrcThrottle, throttleIdx);
-    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgInfo.laSrcBrake);
-
+    uint32_t brakeIdx;
     uint32_t steerIdx;
+
+    Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgInfo.laSrcThrottle, throttleIdx);
+    Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgInfo.laSrcBrake, brakeIdx);
+
     Vector3 nextPositionSteer = getCoord(coords, lookAheadSteer, actualAngle, dbgInfo.laSrcSteer, steerIdx);
     Vector3 origPosSteer = nextPositionSteer;
     {
@@ -376,12 +378,15 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         Vector3 steerB = coords[(steerIdx + 1) % coords.size()].v;
 
         float steerDiff = avgCenterDiff(coords, steerIdx);
-        float accelDiff = avgCenterDiff(coords, throttleIdx);
+        float brakeDiff = avgCenterDiff(coords, brakeIdx);
 
-        if (abs(accelDiff) > abs(steerDiff))
-            steerDiff = -accelDiff;
+        if (abs(brakeDiff) > abs(steerDiff))
+            steerDiff = -brakeDiff;
 
-        float cDist = lerp(mCDistPrev, map(std::clamp(steerDiff, -2.0f, 2.0f), -2.0f, 2.0f, -coords[steerIdx].w, coords[steerIdx].w), GAMEPLAY::GET_FRAME_TIME() / 0.200f);
+        float cDist = lerp(
+            mCDistPrev, 
+            map(std::clamp(steerDiff, -2.0f, 2.0f), -2.0f, 2.0f, -coords[steerIdx].w, coords[steerIdx].w), 
+            1.0f - pow(0.200f, GAMEPLAY::GET_FRAME_TIME()));
         mCDistPrev = cDist;
 
         nextPositionSteer = GetPerpendicular(steerA, steerB, cDist, false);
@@ -658,31 +663,19 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         reduction = 1.0f;
     }
 
-    float desiredHeading = calculateDesiredHeading(actualAngle, limitRadians, inputs.steer, reduction);
+    // TODO: Steering is not lerp'd for AI, consider another strategy.
+    float steerCurr = lerp(
+        mSteerPrev,
+        inputs.steer,
+        1.0f - pow(0.0005f, GAMEPLAY::GET_FRAME_TIME()));
+    mSteerPrev = steerCurr;
 
-    float finalThrottle = lerp(gExt.GetThrottleP(mVehicle), inputs.throttle, GAMEPLAY::GET_FRAME_TIME() / 0.025f);
-    gExt.SetThrottle(mVehicle, finalThrottle);
-    gExt.SetThrottleP(mVehicle, finalThrottle);
+    float desiredHeading = calculateDesiredHeading(limitRadians, inputs.steer, reduction);
 
-    uint8_t numWheels = gExt.GetNumWheels(mVehicle);
-    uint8_t numLockedUp = 0;
-    auto curbrs = gExt.GetWheelBrakePressure(mVehicle);
-    auto comprs = gExt.GetWheelCompressions(mVehicle);
-    auto speeds = gExt.GetWheelRotationSpeeds(mVehicle);
-    if (numWheels >= 4) {        
-        for (uint8_t i = 0; i < 2; ++i) {
-            if (speeds[i] == 0.0f && comprs[i] > 0.0f /*&& curbrs[i] > 0.0f*/) {
-                ++numLockedUp;// = true;
-            }
-        }
-    }
+    gExt.SetThrottle(mVehicle, inputs.throttle);
+    gExt.SetThrottleP(mVehicle, inputs.throttle);
 
-    float finalBrake = lerp(gExt.GetBrakeP(mVehicle), inputs.brake, GAMEPLAY::GET_FRAME_TIME() / 0.025f);
-    if (numLockedUp == numWheels) {
-        finalBrake = finalBrake * 0.25f;
-        dbgInfo.abs = true;
-    }
-    gExt.SetBrakeP(mVehicle, finalBrake);
+    gExt.SetBrakeP(mVehicle, inputs.brake);
     if (inputs.brake > 0.15f)
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, true);
     else
@@ -1057,4 +1050,3 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     //std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
     //std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
 }
-
