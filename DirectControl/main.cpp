@@ -9,6 +9,12 @@ http://dev-c.com
 #include "Util/Logger.hpp"
 #include <Memory/Versions.h>
 
+bool unloading = false;
+
+bool Unloading() {
+    return unloading;
+}
+
 BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
     const char* logFile = "./DirectControl.log";
     gLogger.SetFile(logFile);
@@ -16,6 +22,7 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
 
     switch (reason) {
     case DLL_PROCESS_ATTACH: {
+        unloading = false;
         gLogger.Clear();
         gLogger.Write(INFO, "DirectControl %s (build %s %s)", "v0.0.0", __DATE__, __TIME__);
         gLogger.Write(INFO, "Game version " + eGameVersionToString(getGameVersion()));
@@ -25,6 +32,7 @@ BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
         break;
     }
     case DLL_PROCESS_DETACH: {
+        unloading = true;
         ScriptExit();
         scriptUnregister(hInstance);
         break;

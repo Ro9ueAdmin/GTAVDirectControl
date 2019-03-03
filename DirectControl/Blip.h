@@ -1,7 +1,8 @@
 #pragma once
-#include "inc/natives.h"
 #include <string>
+#include "inc/natives.h"
 #include "inc/enums.h"
+#include "script.h"
 
 
 class BlipX {
@@ -17,7 +18,9 @@ public:
     }
 
     ~BlipX() {
-        //TODO: Check if game is quitting
+        if (Unloading())
+            return;
+
         Delete();
     }
 

@@ -15,3 +15,4 @@ http://dev-c.com
 void ScriptMain();
 void ScriptExit();
 void CheatMain();
+bool Unloading();

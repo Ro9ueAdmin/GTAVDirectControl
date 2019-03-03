@@ -55,7 +55,10 @@ Racer::Racer(Vehicle vehicle)
 }
 
 Racer::~Racer() {
-    //TODO: Check if game is quitting
+
+    if (Unloading())
+        return;
+
     if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
         gExt.SetThrottleP(mVehicle, 0.0f);
         gExt.SetBrakeP(mVehicle, 1.0f);
