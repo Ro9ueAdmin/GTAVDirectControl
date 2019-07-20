@@ -44,8 +44,8 @@ constexpr T deg2rad(T deg) {
     return static_cast<T>(static_cast<double>(deg) * 3.141592653589793238463 / 180.0);
 }
 
-template <typename T>
-constexpr T map(T x, T in_min, T in_max, T out_min, T out_max) {
+template <typename T1, typename T2>
+constexpr T2 map(T1 x, T1 in_min, T1 in_max, T2 out_min, T2 out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
