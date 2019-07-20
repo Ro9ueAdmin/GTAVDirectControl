@@ -677,13 +677,6 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         reduction = 1.0f;
     }
 
-    // TODO: Steering is not lerp'd for AI, consider another strategy.
-    float steerCurr = lerp(
-        mSteerPrev,
-        inputs.steer,
-        1.0f - pow(0.0005f, GAMEPLAY::GET_FRAME_TIME()));
-    mSteerPrev = steerCurr;
-
     float desiredHeading = calculateDesiredHeading(limitRadians, inputs.steer, reduction);
 
     gExt.SetThrottle(mVehicle, inputs.throttle);
@@ -695,11 +688,21 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
     else
         VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(mVehicle, false);
 
-    gExt.SetSteeringAngle(mVehicle, desiredHeading);
+    // clamp steering speed to 1 rot/s 
+    // typically side-to-side in 0.2 seconds with 36 degrees steering angle
+    float deltaT = GAMEPLAY::GET_FRAME_TIME();
+    float maxDeltaSteer = 3.14f * 2.0f; // 2 turns/s
+    float newSteer = desiredHeading;
+    if (abs(mSteerPrev - desiredHeading)/deltaT > maxDeltaSteer) {
+        newSteer = mSteerPrev - sgn(mSteerPrev - desiredHeading) * maxDeltaSteer * deltaT;
+    }
+    gExt.SetSteeringAngle(mVehicle, newSteer);
     gExt.SetHandbrake(mVehicle, inputs.handbrake);
 
     if (mDebugView)
         displayDebugInfo(inputs, dbgInfo);
+
+    mSteerPrev = newSteer;
 }
 
 void Racer::updateStatus() {
