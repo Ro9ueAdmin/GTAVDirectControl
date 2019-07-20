@@ -485,8 +485,8 @@ void main() {
 }
 
 void ScriptMain() {
-	srand(GetTickCount());
-	main();
+    srand(GetTickCount());
+    main();
 }
 
 void ScriptExit() {

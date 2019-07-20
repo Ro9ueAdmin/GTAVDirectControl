@@ -55,17 +55,21 @@ Racer::Racer(Vehicle vehicle)
 }
 
 Racer::~Racer() {
+    try {
+        if (Unloading())
+            return;
 
-    if (Unloading())
-        return;
-
-    if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
-        gExt.SetThrottleP(mVehicle, 0.0f);
-        gExt.SetBrakeP(mVehicle, 1.0f);
-        gExt.SetSteeringAngle(mVehicle, 0.0f);
-        gExt.SetHandbrake(mVehicle, false);
-        ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
-        ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
+        if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
+            gExt.SetThrottleP(mVehicle, 0.0f);
+            gExt.SetBrakeP(mVehicle, 1.0f);
+            gExt.SetSteeringAngle(mVehicle, 0.0f);
+            gExt.SetHandbrake(mVehicle, false);
+            ENTITY::SET_ENTITY_AS_MISSION_ENTITY(mVehicle, false, true);
+            ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&mVehicle);
+        }
+    }
+    catch (...) {
+        // Discard exceptions
     }
 }
 
@@ -516,7 +520,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     {
 
         Vector3 predictedPos = (nextPositionVelocity + turnWorld) * 0.5f;
-        uint32_t idx = coords.size();
+        uint32_t idx = static_cast<uint32_t>(coords.size());
         Point trackClosestPred = getTrackCoordNearCoord(coords, predictedPos, idx);
         uint32_t x;
         auto trackClosestAi = getTrackCoordNearCoord(coords, aiPosition, x);
@@ -870,7 +874,7 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
 }
 
 Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 findCoord, uint32_t& outIndex) {
-    outIndex = trackCoords.size(); // return trackCoords.end() basically
+    outIndex = static_cast<uint32_t>(trackCoords.size()); // return trackCoords.end() basically
 
     float smallestDistance = 10000.0f;
     Point closestPoint{};
