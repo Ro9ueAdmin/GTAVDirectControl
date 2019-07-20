@@ -69,6 +69,10 @@ Racer::~Racer() {
     }
 }
 
+bool Racer::IsDead() {
+    return mDead;
+}
+
 bool Racer::GetActive() {
     return mActive;
 }

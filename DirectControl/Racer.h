@@ -36,6 +36,12 @@ public:
     ~Racer();
 
     /**
+     * \brief                  Check if racer is dead.
+     * \return                 true when dead.
+     */
+    bool IsDead();
+
+    /**
      * \brief                   Update vehicle control inputs based on AI decision making.
      *                          Needs to be called every tick.
      * \param [in] coords       Input list of coordinates of track to follow.

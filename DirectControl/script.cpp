@@ -272,6 +272,8 @@ void UpdateCheats() {
 
     if (GAMEPLAY::_HAS_CHEAT_STRING_JUST_BEEN_ENTERED(GAMEPLAY::GET_HASH_KEY("fixai"))) {
         for (auto& racer : gRacers) {
+            if (racer->IsDead())
+                continue;
             Vehicle v = racer->GetVehicle();
             VEHICLE::SET_VEHICLE_FIXED(v);
             VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(v);
