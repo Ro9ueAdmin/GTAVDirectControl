@@ -238,7 +238,7 @@ protected:
      * \param [out] overtakeReason  Logic source of overtake point
      */
     Vector3 chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc,
-                                OvertakeSource& overtakeReason);
+                                Vector3 origSteerCoord, OvertakeSource& overtakeReason);
 
     /**
      * \brief                   Get predicted "apex" at a given coordinate on the track.

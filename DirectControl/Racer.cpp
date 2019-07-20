@@ -176,7 +176,8 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
     return {};
 }
 
-Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc, Racer::
+Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::vector<Vector3> &overtakePoints, float aiLookahead, Vehicle npc, Vector3
+                                   origSteerCoord, Racer::
                                    OvertakeSource& overtakeReason) {
     Vector3 npcPosition = ENTITY::GET_ENTITY_COORDS(npc, 1);
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
@@ -296,8 +297,16 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
             }
         }
 
-        if (Distance(overtakePoint, aiPosition) < aiLookahead) {
-            return overtakePoint;
+        // scale overtaking side distance with distance and speed
+        float dDist = Distance(overtakePoint, aiPosition);
+        if (dDist < aiLookahead) {
+            float vAI = Length(ENTITY::GET_ENTITY_VELOCITY(mVehicle));
+            float vNPC = Length(ENTITY::GET_ENTITY_VELOCITY(npc));
+            float dV = abs(vAI - vNPC);
+            // 28kph and up: full distance
+            float dVRatio = std::clamp(map(dV, 0.0f, 8.0f, 0.0f, 1.0f), 0.0f, 1.0f);
+            auto pt = map(dDist * dVRatio, 0.0f, aiLookahead, overtakePoint, origSteerCoord);
+            return pt;
         }
 
     }
@@ -353,7 +362,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     float aiPitch = ENTITY::GET_ENTITY_PITCH(mVehicle);
-    float pitchClp = std::clamp(aiPitch, gSettings.AISteerLookAheadPitch, 0.0f);
+    float pitchClp = abs(aiPitch);// std::clamp(aiPitch, gSettings.AISteerLookAheadPitch, 0.0f);
     //showText(0.1f, 0.1f, 0.5f, fmt("Pitch: %.03f", pitchClp));
     float settingLAThrottle = gSettings.AILookaheadThrottleSpeedMult;
 
@@ -362,10 +371,9 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 
     settingLASteer = map(pitchClp, 0.0f, gSettings.AISteerLookAheadPitch, settingLASteer, settingLABrake);
 
-    float lookAheadSteer =  std::clamp(settingLASteer * aiSpeed, gSettings.AILookaheadSteerMinDistance, 9999.0f);
-
     float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance, 9999.0f);
+    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance,          9999.0f);
+    float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, gSettings.AILookaheadSteerMinDistance,          9999.0f);
 
     uint32_t throttleIdx;
     uint32_t brakeIdx;
@@ -397,7 +405,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     }
 
     if (overtakePoints.size() == 3) {
-        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, dbgInfo.overtakeSource);
+        Vector3 overtakePoint = chooseOvertakePoint(coords, overtakePoints, aiLookahead, npc, origPosSteer, dbgInfo.overtakeSource);
         if (Length(overtakePoint) > 0.0f) {
             nextPositionSteer = overtakePoint;
         }
@@ -558,7 +566,10 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
                         , 0.0f, 1.0f);
             }
         }
-
+        if (dbgInfo.trackLimits) {
+            // Ignore overtaking when (heading) out of track limits
+            nextPositionSteer = origPosSteer;
+        }
     }
 
     // TODO: Clean up, consider braking _earlier_ instead of _harder_.
