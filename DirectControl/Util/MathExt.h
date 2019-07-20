@@ -25,6 +25,7 @@ Vector3 operator + (Vector3 left, Vector3 right);
 Vector3 operator - (Vector3 left, Vector3 right);
 Vector3 operator * (Vector3 value, float scale);
 Vector3 operator * (float scale, Vector3 vec);
+Vector3 operator / (Vector3 value, float ratio);
 bool operator== (Vector3 a, Vector3 b);
 Vector3 Normalize(Vector3 vec);
 Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forward, Vector3 offset);

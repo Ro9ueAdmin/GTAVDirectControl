@@ -64,6 +64,17 @@ Vector3 operator * (float scale, Vector3 vec) {
     return vec * scale;
 }
 
+Vector3 operator/(Vector3 value, float ratio) {
+    return Vector3{
+        value.x / ratio,
+        0,      
+        value.y / ratio,
+        0,      
+        value.z / ratio ,
+        0
+    };
+}
+
 bool operator==(Vector3 a, Vector3 b) {
     return a.x == b.x && a.y == b.y && a.z == b.z;
 }
