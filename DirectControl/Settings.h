@@ -14,6 +14,8 @@ public:
     bool AIShowDebugText;                       // enables debug text if debug normal is enabled
     bool AIDefaultActive;                       // to default spawn AI with AI active
 
+    bool AIAutoRepair;
+
     float AILookaheadThrottleSpeedMult;         // m/s meters lookahead multiplier
     float AILookaheadThrottleMinDistance;       // minimal lookahead distance
     float AILookaheadBrakeSpeedMult;            // m/s meters lookahead multiplier

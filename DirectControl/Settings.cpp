@@ -58,11 +58,14 @@ void Settings::ReadSettings(const char *file) {
 
     const char* debugSection = "Debug";
     const char* paramSection = "AIParameters";
+    const char* miscSection = "Misc";
 
     TrackShowDebug =                    ini.GetBoolValue(debugSection, "TrackShowDebug");
     AIShowDebug =                       ini.GetBoolValue(debugSection, "AIShowDebug");
     AIShowDebugText =                   ini.GetBoolValue(debugSection, "AIShowDebugText");
     AIDefaultActive =                   ini.GetBoolValue(debugSection, "AIDefaultActive");
+
+    AIAutoRepair =                      ini.GetBoolValue(miscSection, "AIAutoRepair");
 
     AILookaheadThrottleSpeedMult =      ini.GetDoubleValue(paramSection, "AILookaheadThrottleSpeedMult");
     AILookaheadThrottleMinDistance =    ini.GetDoubleValue(paramSection, "AILookaheadThrottleMinDistance");
@@ -127,6 +130,7 @@ void Settings::WriteDefaults(const char *file) {
 
     const char* debugSection = "Debug";
     const char* paramSection = "AIParameters";
+    const char* miscSection = "Misc";
 
     ini.SetBoolValue(debugSection, "TrackShowDebug", TrackShowDebug, 
         "; Show the track center line by default");

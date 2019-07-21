@@ -41,6 +41,8 @@ public:
      */
     bool IsDead();
 
+    void Fix();
+
     /**
      * \brief                   Update vehicle control inputs based on AI decision making.
      *                          Needs to be called every tick.

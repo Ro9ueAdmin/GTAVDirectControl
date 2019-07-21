@@ -77,6 +77,16 @@ bool Racer::IsDead() {
     return mDead;
 }
 
+void Racer::Fix() {
+    if (mDead)
+        return;
+    VEHICLE::SET_VEHICLE_FIXED(mVehicle);
+    VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(mVehicle);
+    VEHICLE::SET_VEHICLE_BODY_HEALTH(mVehicle, 1000.0f);
+    VEHICLE::SET_VEHICLE_ENGINE_HEALTH(mVehicle, 1000.0f);
+    VEHICLE::SET_VEHICLE_PETROL_TANK_HEALTH(mVehicle, 1000.0f);
+}
+
 bool Racer::GetActive() {
     return mActive;
 }
@@ -754,6 +764,9 @@ void Racer::updateAux() {
     headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
     headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
+    if (gSettings.AIAutoRepair) {
+        Fix();
+    }
 }
 
 void Racer::teleportToClosestNode(const std::vector<Point>& coords) {
