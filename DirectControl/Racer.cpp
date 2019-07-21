@@ -318,12 +318,13 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         // scale overtaking side distance with distance and speed
         float dDist = Distance(overtakePoint, aiPosition);
         if (dDist < aiLookahead) {
+            float dDistScaled = map(dDist, 0.0f, aiLookahead, 1.0f, 0.0f);
             float vAI = Length(ENTITY::GET_ENTITY_VELOCITY(mVehicle));
             float vNPC = Length(ENTITY::GET_ENTITY_VELOCITY(npc));
             float dV = abs(vAI - vNPC);
             // 28kph and up: full distance
             float dVRatio = std::clamp(map(dV, 0.0f, 8.0f, 0.0f, 1.0f), 0.0f, 1.0f);
-            auto pt = map(dDist * dVRatio, 0.0f, aiLookahead, overtakePoint, origSteerCoord);
+            auto pt = map(dDistScaled * dVRatio, 0.0f, aiLookahead, overtakePoint, origSteerCoord);
             return pt;
         }
 
