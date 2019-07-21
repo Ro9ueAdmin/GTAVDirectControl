@@ -34,6 +34,7 @@
     <ClCompile Include="Util\Timer.cpp">
       <Filter>Util</Filter>
     </ClCompile>
+    <ClCompile Include="Cheats.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="script.h" />
@@ -88,6 +89,7 @@
     <ClInclude Include="Memory\Versions.h">
       <Filter>MannyTranny</Filter>
     </ClInclude>
+    <ClInclude Include="Cheats.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="MannyTranny">

@@ -148,6 +148,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Cheats.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory\NativeMemory.cpp" />
     <ClCompile Include="Memory\VehicleExtensions.cpp" />
@@ -170,6 +171,7 @@
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h" />
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h" />
     <ClInclude Include="Blip.h" />
+    <ClInclude Include="Cheats.h" />
     <ClInclude Include="Memory\NativeMemory.hpp" />
     <ClInclude Include="Memory\Offsets.hpp" />
     <ClInclude Include="Memory\VehicleExtensions.hpp" />
