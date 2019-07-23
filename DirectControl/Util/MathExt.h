@@ -32,7 +32,15 @@ Vector3 GetOffsetInWorldCoords(Vector3 position, Vector3 rotation, Vector3 forwa
 float GetAngleBetween(Vector3 a, Vector3 b);
 float GetAngleBetween(float h1, float h2, float separation);
 
+struct Vector3_ : Vector3 {
+    Vector3_(float x, float y, float z)
+    :Vector3{ x, 0, y, 0, z, 0 }
+    { }
+
+};
+
 // Return true if line segments AB and CD intersect
+// Only X,Y plane is checked
 bool Intersect(Vector3 A, Vector3 B, Vector3 C, Vector3 D);
 
 template <typename T>

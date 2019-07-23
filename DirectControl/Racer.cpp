@@ -146,7 +146,9 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     // Add a +5% margin so same-speed cars evade each other.
-    if (abs(headingAiToNpc) < deg2rad(90.0f) && aiSpeed * 1.05f >= npcSpeed) {
+    // TODO: Move 120 deg side-eye and 1.05 speedMult to settings
+    // TODO: Alt: find out how to watch out for >90 deg
+    if (abs(headingAiToNpc) < deg2rad(120.0f) && aiSpeed * 1.05f >= npcSpeed) {
         float diffHeading = atan2(sin(npcHeading - aiHeading), cos(npcHeading - aiHeading));
 
         // Make oval shape around entity to overtake, based on dimensions.
@@ -230,19 +232,47 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         }
     }
 
-    Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle) * 1.25f;
+    Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
     Vector3 aiNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
     Vector3 aiNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(aiNextVRot.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(aiNextVRot.z), 0.0f);
+    Vector3 aiPredPos = (aiNextPVel + aiNextPRot) * 0.5f;
+    Vector3 aiDim = GetEntityDimensions(mVehicle);
+    Vector3 aiRot = ENTITY::GET_ENTITY_ROTATION(mVehicle, 0);
+    Vector3 aiForward = ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
+
+    // TODO: ai self size scale
+    Vector3 aiPredOffLeftRear = GetOffsetInWorldCoords(aiPredPos,   aiRot, aiForward, Vector3_{ -aiDim.x * 0.75f, -aiDim.y * 0.75f, 0.0f });
+    Vector3 aiPredOffLeftFront = GetOffsetInWorldCoords(aiPredPos,  aiRot, aiForward, Vector3_{ -aiDim.x * 0.75f,  aiDim.y * 0.75f, 0.0f });
+    Vector3 aiPredOffRightRear = GetOffsetInWorldCoords(aiPredPos,  aiRot, aiForward, Vector3_{  aiDim.x * 0.75f, -aiDim.y * 0.75f, 0.0f });
+    Vector3 aiPredOffRightFront = GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{  aiDim.x * 0.75f,  aiDim.y * 0.75f, 0.0f });
 
     Vector3 npcNextPVel = npcPosition + ENTITY::GET_ENTITY_VELOCITY(npc);
     Vector3 npcNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(npc);
     Vector3 npcNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(npc, ENTITY::GET_ENTITY_SPEED(npc)*-sin(npcNextVRot.z), ENTITY::GET_ENTITY_SPEED(npc)*cos(npcNextVRot.z), 0.0f);
+    Vector3 npcPredPos = (npcNextPVel + npcNextPRot) * 0.5f;
+    Vector3 npcDim = GetEntityDimensions(npc);
+    Vector3 npcRot = ENTITY::GET_ENTITY_ROTATION(npc, 0);
+    Vector3 npcForward = ENTITY::GET_ENTITY_FORWARD_VECTOR(npc);
+
+    // TODO: ai npc size scale
+    Vector3 npcPredOffLeftRear = GetOffsetInWorldCoords(npcPredPos,   npcRot, npcForward, Vector3_{ -npcDim.x * 0.75f, -npcDim.y * 0.75f, 0.0f });
+    Vector3 npcPredOffLeftFront = GetOffsetInWorldCoords(npcPredPos,  npcRot, npcForward, Vector3_{ -npcDim.x * 0.75f,  npcDim.y * 0.75f, 0.0f });
+    Vector3 npcPredOffRightRear = GetOffsetInWorldCoords(npcPredPos,  npcRot, npcForward, Vector3_{  npcDim.x * 0.75f, -npcDim.y * 0.75f, 0.0f });
+    Vector3 npcPredOffRightFront = GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{  npcDim.x * 0.75f,  npcDim.y * 0.75f, 0.0f });
+
+    bool intersect2 =
+        Distance(aiPredPos, npcPredPos) < std::max(aiDim.y, npcDim.y);
+
+    bool intersect3 =
+        Intersect(aiPosition, aiPredPos, npcPredOffLeftRear, npcPredOffRightRear) ||    // ai -> rear bumper
+        Intersect(aiPosition, aiPredPos, npcPredOffLeftRear, npcPredOffLeftFront) ||    // ai -> left
+        Intersect(aiPosition, aiPredPos, npcPredOffRightRear, npcPredOffRightFront) ||  // ai -> right
+        Intersect(aiPosition, aiPredPos, npcPredOffLeftFront, npcPredOffRightFront) ||  // ai -> front bumper
+        Intersect(aiPredOffLeftFront, aiPredOffRightFront, npcPredOffLeftFront, npcPredOffLeftRear) ||  // ai front -> npc left
+        Intersect(aiPredOffLeftFront, aiPredOffRightFront, npcPredOffRightFront, npcPredOffRightFront); // ai front -> npc right
 
 
-    bool intersect = Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, overtakePoints[0], overtakePoints[1]);
-    intersect |= Intersect(aiPosition, (aiNextPVel + aiNextPRot) * 0.5f, npcPosition, (npcNextPVel + npcNextPRot) * 0.5f);
-
-    if (intersect) {
+    if (intersect2 || intersect3) {
         // Check which overtake point has the least relative angle towards our vehicle
         float angleCW  = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[0] - aiPosition));
         float angleCCW = GetAngleBetween(Normalize(ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle)), Normalize(overtakePoints[1] - aiPosition));
@@ -318,13 +348,27 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         // scale overtaking side distance with distance and speed
         float dDist = Distance(overtakePoint, aiPosition);
         if (dDist < aiLookahead) {
-            float dDistScaled = map(dDist, 0.0f, aiLookahead, 1.0f, 0.0f);
             float vAI = Length(ENTITY::GET_ENTITY_VELOCITY(mVehicle));
             float vNPC = Length(ENTITY::GET_ENTITY_VELOCITY(npc));
             float dV = abs(vAI - vNPC);
-            // 28kph and up: full distance
+
+            // 28kph and up: full deviation (larger v, larger deviation)
             float dVRatio = std::clamp(map(dV, 0.0f, 8.0f, 0.0f, 1.0f), 0.0f, 1.0f);
-            auto pt = map(dDistScaled * dVRatio, 0.0f, aiLookahead, overtakePoint, origSteerCoord);
+
+            // dist car: full deviation. dist lookahead: no deviation
+            float dDistRatio = std::clamp(map(dDist, aiDim.y, aiLookahead, 1.0f, 0.0f), 0.0f, 1.0f);
+
+            // TODO: Consider max, average, mult, for these values
+            // What I want: 
+            // Max deviation:
+            //      when going very fast relatively or
+            //      when being side to side-ish
+            // Min deviation:
+            //      when speed matches
+            //      when very far away
+            // Mid deviation:
+            //      low relative speed and low distance
+            auto pt = map(std::max(dDistRatio, dVRatio), 0.0f, 1.0f, origSteerCoord, overtakePoint);
             return pt;
         }
 
