@@ -99,7 +99,7 @@
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;NOGDI;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>D:\git\ScriptHookV_SDK;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\ScriptHookV_SDK;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
@@ -135,7 +135,7 @@
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;NOGDI;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\git\ScriptHookV_SDK;$(ProjectDir);D:\git\GTAVMenuBase;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\ScriptHookV_SDK;$(ProjectDir);..\..\GTAVMenuBase;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4305;4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
