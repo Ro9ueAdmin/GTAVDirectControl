@@ -1,6 +1,8 @@
 GTA V Racing AI / Direct Control Test
 ===========
 
+[![Build status](https://ci.appveyor.com/api/projects/status/1w2iarcia2qyfi9e/branch/master?svg=true)](https://ci.appveyor.com/project/E66666666/gtavdirectcontrol/branch/master)
+
 This project has multiple goals, but is mostly to experiment and have fun
 with. 
 
