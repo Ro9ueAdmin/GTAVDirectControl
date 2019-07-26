@@ -2,7 +2,7 @@
 #include <vector>
 #include <inc/types.h>
 #include "Blip.h"
-#include "Point.h"
+#include "Track.h"
 #include "Util/Timer.h"
 
 /**

@@ -13,14 +13,14 @@
 #include "Racer.h"
 #include "PlayerRacer.h"
 #include "Settings.h"
-#include "Point.h"
+#include "Track.h"
 #include "Cheats.h"
+#include "Session.h"
 
 using json = nlohmann::json;
 
 bool gRecording = false;
 
-std::vector<Point> gTrackCoords;
 std::vector<std::unique_ptr<Racer>> gRacers;
 std::unique_ptr<PlayerRacer> gPlayerRacer(nullptr);
 
@@ -41,8 +41,37 @@ void UpdatePlayer() {
 
     if (gRecording) {
         Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
-        if (Distance(gTrackCoords.back().v, myCoords) > 1.0f) {
-            gTrackCoords.push_back({ { myCoords }, 5 });
+        
+        if (Distance(Recorder::Get().Points().back().v, myCoords) > 1.0f) {
+            Recorder::Get().Append(Point(myCoords, 5.0f));
+        }
+    }
+}
+
+void DrawDebugTrack(const std::vector<Point>& trackCoords) {
+    if (!trackCoords.empty()) {
+        drawSphere(trackCoords[0].v, 0.125f, { 255, 255, 0, 255 });
+    }
+
+    for (size_t idx = 0; idx < trackCoords.size(); ++idx) {
+        auto coord = trackCoords[idx];
+        float screenX, screenY;
+        bool visibleC = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.v.x, coord.v.y, coord.v.z, &screenX, &screenY);
+
+        if (visibleC) {
+            Vector3 a = trackCoords[idx].v;
+            Vector3 b = trackCoords[(idx + 1) % trackCoords.size()].v;
+            Vector3 c = trackCoords[(idx + 2) % trackCoords.size()].v;
+
+            Vector3 cwA = GetPerpendicular(a, b, coord.w, true);
+            Vector3 ccwA = GetPerpendicular(a, b, coord.w, false);
+
+            Vector3 cwB = GetPerpendicular(b, c, coord.w, true);
+            Vector3 ccwB = GetPerpendicular(b, c, coord.w, false);
+
+            drawLine(a, b, { 255, 255, 0, 255 });
+            drawLine(cwA, cwB, { 255, 255, 0, 255 });
+            drawLine(ccwA, ccwB, { 255, 255, 0, 255 });
         }
     }
 }
@@ -52,36 +81,16 @@ void UpdateAI(){
     int npcCount = worldGetAllVehicles(npcs.data(), 1024);
     npcs.resize(npcCount);
 
+    auto& trackCoords = Session::Get().GetTrack().Points();
     for (auto& racer : gRacers) {
-        racer->UpdateControl(gTrackCoords, npcs);
+        racer->UpdateControl(trackCoords, npcs);
     }    
 
-    if (gSettings.TrackShowDebug || gRecording) {
-        if (!gTrackCoords.empty()) {
-            drawSphere(gTrackCoords[0].v, 0.125f, { 255, 255, 0, 255 });
-        }
-
-        for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
-            auto coord = gTrackCoords[idx];
-            float screenX, screenY;
-            bool visibleC = GRAPHICS::GET_SCREEN_COORD_FROM_WORLD_COORD(coord.v.x, coord.v.y, coord.v.z, &screenX, &screenY);
-
-            if (visibleC) {
-                Vector3 a = gTrackCoords[idx].v;
-                Vector3 b = gTrackCoords[(idx + 1) % gTrackCoords.size()].v;
-                Vector3 c = gTrackCoords[(idx + 2) % gTrackCoords.size()].v;
-
-                Vector3 cwA = GetPerpendicular(a, b, coord.w, true);
-                Vector3 ccwA = GetPerpendicular(a, b, coord.w, false);
-
-                Vector3 cwB = GetPerpendicular(b, c, coord.w, true);
-                Vector3 ccwB = GetPerpendicular(b, c, coord.w, false);
-
-                drawLine(a, b, { 255, 255, 0, 255 });
-                drawLine(cwA, cwB, { 255, 255, 0, 255 });
-                drawLine(ccwA, ccwB, { 255, 255, 0, 255 });
-            }
-        }
+    if (gRecording) {
+        DrawDebugTrack(Recorder::Get().Points());
+    }
+    else if (gSettings.TrackShowDebug) {
+        DrawDebugTrack(trackCoords);
     }
 }
 

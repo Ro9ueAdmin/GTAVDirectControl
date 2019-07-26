@@ -13,20 +13,17 @@
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="Memory\NativeMemory.cpp">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClCompile>
     <ClCompile Include="Memory\VehicleExtensions.cpp">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClCompile>
-    <ClCompile Include="XInputControl.cpp" />
     <ClCompile Include="Util\TimeHelper.cpp">
       <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="Util\StringFormat.cpp">
       <Filter>Util</Filter>
     </ClCompile>
-    <ClCompile Include="Racer.cpp" />
-    <ClCompile Include="PlayerRacer.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="Util\Logger.cpp">
       <Filter>Util</Filter>
@@ -34,7 +31,21 @@
     <ClCompile Include="Util\Timer.cpp">
       <Filter>Util</Filter>
     </ClCompile>
-    <ClCompile Include="Cheats.cpp" />
+    <ClCompile Include="Cheats.cpp">
+      <Filter>Race Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Track.cpp">
+      <Filter>Race Control</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerRacer.cpp">
+      <Filter>Agents</Filter>
+    </ClCompile>
+    <ClCompile Include="Racer.cpp">
+      <Filter>Agents</Filter>
+    </ClCompile>
+    <ClCompile Include="XInputControl.cpp">
+      <Filter>Agents</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="script.h" />
@@ -48,23 +59,20 @@
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="Memory\NativeMemory.hpp">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClInclude>
     <ClInclude Include="Memory\Offsets.hpp">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClInclude>
     <ClInclude Include="Memory\VehicleExtensions.hpp">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClInclude>
-    <ClInclude Include="XInputControl.h" />
     <ClInclude Include="Util\TimeHelper.hpp">
       <Filter>Util</Filter>
     </ClInclude>
-    <ClInclude Include="Blip.h" />
     <ClInclude Include="Util\StringFormat.h">
       <Filter>Util</Filter>
     </ClInclude>
-    <ClInclude Include="Racer.h" />
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h">
       <Filter>ScriptHookV</Filter>
     </ClInclude>
@@ -77,29 +85,53 @@
     <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h">
       <Filter>ScriptHookV</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerRacer.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Util\Logger.hpp">
       <Filter>Util</Filter>
     </ClInclude>
-    <ClInclude Include="Point.h" />
     <ClInclude Include="Util\Timer.h">
       <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="Memory\Versions.h">
-      <Filter>MannyTranny</Filter>
+      <Filter>Manual Transmission</Filter>
     </ClInclude>
-    <ClInclude Include="Cheats.h" />
+    <ClInclude Include="Cheats.h">
+      <Filter>Race Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
+      <Filter>Race Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Track.h">
+      <Filter>Race Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Blip.h">
+      <Filter>Agents</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerRacer.h">
+      <Filter>Agents</Filter>
+    </ClInclude>
+    <ClInclude Include="Racer.h">
+      <Filter>Agents</Filter>
+    </ClInclude>
+    <ClInclude Include="XInputControl.h">
+      <Filter>Agents</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="MannyTranny">
-      <UniqueIdentifier>{f584c9a9-8e2c-4057-b1ec-a13c14aaf6dd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Util">
       <UniqueIdentifier>{eccfe600-6937-4011-a8d0-96b334bc2909}</UniqueIdentifier>
     </Filter>
     <Filter Include="ScriptHookV">
       <UniqueIdentifier>{dbac57a1-b74f-4be6-bfcf-f239001cc98a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Manual Transmission">
+      <UniqueIdentifier>{f584c9a9-8e2c-4057-b1ec-a13c14aaf6dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Race Control">
+      <UniqueIdentifier>{18b9246e-0c76-43c9-b119-4a618df37953}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Agents">
+      <UniqueIdentifier>{e1efd7a6-30ba-4494-8973-d93cdef7ab6f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -888,7 +888,7 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
     {
         float smallestDistanceAI = 10000.0f;
         Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-        Point aiTrackClosest = { aiPosition , 5.0f };
+        Point aiTrackClosest(aiPosition , 5.0f);
         for (auto& point : coords) {
             Vector3 coord = point.v;
             float distanceAI = Distance(aiPosition, coord);

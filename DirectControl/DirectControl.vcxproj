@@ -156,6 +156,7 @@
     <ClCompile Include="Racer.cpp" />
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="Track.cpp" />
     <ClCompile Include="Util\Timer.cpp" />
     <ClCompile Include="Util\Logger.cpp" />
     <ClCompile Include="Util\MathExt.cpp" />
@@ -179,8 +180,9 @@
     <ClInclude Include="PlayerRacer.h" />
     <ClInclude Include="Racer.h" />
     <ClInclude Include="script.h" />
+    <ClInclude Include="Session.h" />
     <ClInclude Include="Settings.h" />
-    <ClInclude Include="Point.h" />
+    <ClInclude Include="Track.h" />
     <ClInclude Include="Util\Timer.h" />
     <ClInclude Include="Util\Logger.hpp" />
     <ClInclude Include="Util\MathExt.h" />

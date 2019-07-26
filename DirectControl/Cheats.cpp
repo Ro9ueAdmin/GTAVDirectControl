@@ -18,12 +18,13 @@
 
 #include <iomanip>
 #include <filesystem>
+#include "Track.h"
+#include "Session.h"
 
 using json = nlohmann::json;
 
 extern bool gRecording;
 
-extern std::vector<Point> gTrackCoords;
 extern std::vector<std::unique_ptr<Racer>> gRacers;
 extern std::unique_ptr<PlayerRacer> gPlayerRacer;
 
@@ -234,8 +235,8 @@ void DebugThis(Vehicle vehicle) {
 
 void RecordTrack(Ped playerPed, bool start) {
     if (start) {
-        gTrackCoords.clear();
-        gTrackCoords.push_back({ { ENTITY::GET_ENTITY_COORDS(playerPed, true) }, 5 });
+        Recorder::Get().ClearPoints();
+        Recorder::Get().Append(Point(ENTITY::GET_ENTITY_COORDS(playerPed, true), 5.0f));
         gRecording = true;
         showNotification("~g~Record started");
     }
@@ -246,8 +247,8 @@ void RecordTrack(Ped playerPed, bool start) {
 }
 
 void ClearTrack(Ped playerPed) {
-    gTrackCoords.clear();
-    gTrackCoords.push_back({ {ENTITY::GET_ENTITY_COORDS(playerPed, true) }, 5 });
+    Session::Get().Reset();
+    //Session::Get().GetTrack().Append(Point(ENTITY::GET_ENTITY_COORDS(playerPed, true), 5.0f));
     gRecording = false;
     showNotification("~r~Record cleared");
 }
@@ -262,12 +263,13 @@ void SaveTrack() {
     std::string saveFile = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
 
     nlohmann::json j;
-    for (int idx = 0; idx < gTrackCoords.size(); ++idx) {
+    const std::vector<Point>& coords = Recorder::Get().Points();
+    for (int idx = 0; idx < coords.size(); ++idx) {
         j["Data"]["Route"]["Point"].push_back({
-            { "X", gTrackCoords[idx].v.x },
-            { "Y", gTrackCoords[idx].v.y },
-            { "Z", gTrackCoords[idx].v.z },
-            { "Wide", gTrackCoords[idx].w },
+            { "X", coords[idx].v.x },
+            { "Y", coords[idx].v.y },
+            { "Z", coords[idx].v.z },
+            { "Wide", coords[idx].w },
             });
     }
     std::ofstream o("./DirectControl/" + saveFile + ".json");
@@ -306,7 +308,7 @@ void LoadTrack() {
         i >> j;
     }
 
-    gTrackCoords.clear();
+    std::vector<Point> trackCoords;
 
     for (auto& pj : j["Data"]["Route"]["Point"]) {
         Point p;
@@ -337,18 +339,17 @@ void LoadTrack() {
             p.w = 5.0f;
         }
 
-        gTrackCoords.push_back(p);
+        trackCoords.push_back(p);
     }
-    float avgDst = 0.0f;
-    for (auto i = 0; i < gTrackCoords.size(); ++i) {
-        avgDst += Distance(gTrackCoords[i].v, gTrackCoords[(i + 1) % gTrackCoords.size()].v);
-    }
-    avgDst /= (float)gTrackCoords.size();
-    showNotification(fmt("~g~Track loaded, %d nodes, %.03f average node distance", gTrackCoords.size(), avgDst));
+
+    Session::Get().SetTrack(Track("", trackCoords));
+
+    showNotification(fmt("~g~Track loaded\n"
+        "Distance: %.2f km", Session::Get().GetTrack().Length()));
 }
 
 void ReverseTrack() {
-    std::reverse(gTrackCoords.begin(), gTrackCoords.end());
+    Session::Get().ReverseTrack();
 }
 
 void DebugTrack() {
