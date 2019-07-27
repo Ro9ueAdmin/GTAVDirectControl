@@ -36,7 +36,6 @@ Racer::Racer(Vehicle vehicle)
     , mActive(gSettings.AIDefaultActive)
     , mDebugView(gSettings.AIShowDebug)
     , mDead(false)
-    , mPrevPointIdx(0)
     , mTrackIdx(0)
     , mLapTimer(0)
     , mLapTime(0)
@@ -714,7 +713,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         updateAux();
     }
 
-    updateLapTimers(coords);
+    //updateLapTimers(coords);
     updateStuck(coords);
 
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
@@ -784,25 +783,28 @@ void Racer::updateStatus() {
     }
 }
 
-void Racer::updateLapTimers(const std::vector<Point>& points) {
-    int currPointIdx = -1;
-
-    float smallestToAi = 10000.0f;
-    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-    for (auto i = 0ull; i < points.size(); ++i) {
-        float distanceAi = Distance(aiPosition, points[i].v);
-        if (distanceAi < smallestToAi) {
-            smallestToAi = distanceAi;
-            currPointIdx = i;
-        }
-    }
-
-    if (currPointIdx < mPrevPointIdx && currPointIdx < 10 && mPrevPointIdx > points.size() - 11) {
-        mLapTime = mLapTimer.Elapsed();
-        mLapTimer.Reset();
-    }
-    mPrevPointIdx = currPointIdx;
-}
+//void Racer::updateLapTimers(const std::vector<Point>& points) {
+//    int currPointIdx = -1;
+//
+//    float smallestToAi = 10000.0f;
+//    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+//    for (auto i = 0ull; i < points.size(); ++i) {
+//        float distanceAi = Distance(aiPosition, points[i].v);
+//        if (distanceAi < smallestToAi) {
+//            smallestToAi = distanceAi;
+//            currPointIdx = i;
+//        }
+//    }
+//
+//    if (currPointIdx < mTrackIdx && currPointIdx < 10 && mTrackIdx > points.size() - 11) {
+//        mLapTime = mLapTimer.Elapsed();
+//        mLapTimer.Reset();
+//    }
+//
+//    if (currPointIdx > mTrackIdx || currPointIdx == 0) {
+//        mTrackIdx = currPointIdx;
+//    }
+//}
 
 void Racer::updateAux() {
     bool headlightsOn = false;

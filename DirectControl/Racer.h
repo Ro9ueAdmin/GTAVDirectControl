@@ -198,7 +198,7 @@ protected:
      * \brief                   Update lap timing
      * \param [in] points       List of track coords
      */
-    void updateLapTimers(const std::vector<Point>& points);
+    //void updateLapTimers(const std::vector<Point>& points);
 
     /**
      * \brief                   Update auxiliary stuff, like lights and stuff.
@@ -275,8 +275,7 @@ protected:
     bool mDebugView;                // Debug information display state.
     bool mDead;                     // Stop processing when dead
 
-    int mPrevPointIdx;              // For lap timing
-    int64_t mTrackIdx;              // TODO: Lap timing & keeping track of things
+    size_t mTrackIdx;               // Last valid track index / checkpoint
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
     int64_t mCurrentLap;            // What lap is AI on?
@@ -285,8 +284,8 @@ protected:
     Timer mAuxTimer;                // Auxiliaries update timer. Period randomizes each period.
     Timer mStuckTimer;              // Start counting when stuck
     Timer mUnstuckTimer;            // Start counting when mStuckTimer expires
-    const int mStuckCountThreshold; // Number of times unstuck is allowed within that time window.
-    int mStuckCount;                // Number of times unstuck was started last mStuckCountTime seconds.
+    uint8_t mStuckCountThreshold;   // Number of times unstuck is allowed within that time window.
+    uint8_t mStuckCount;            // Number of times unstuck was started last mStuckCountTime seconds.
     Timer mStuckCountTimer;         // Start counting when mStuckCount > 0 (for unstuck attempts in period)
     Timer mOutsideTimer;            // Start counting when outside track limits
 
