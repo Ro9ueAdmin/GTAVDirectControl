@@ -70,7 +70,6 @@ void VehicleExtensions::initOffsets() {
     gLogger.Write(gearRatiosOffset == 0 ? WARN : DEBUG, "Gear Ratios Offset: 0x%X", gearRatiosOffset);
 
     if (g_gameVersion >= G_VER_1_0_1604_0_STEAM) {
-        //driveForceOffset = addr == 0 ? 0 : *(int*)(addr + 3) + 0x2C;
         addr = mem::FindPattern("\xF3\x0F\x10\x8F\xA4\x08\x00\x00\xF3\x0F\x5E\xF0\x41\x0F\x2F\xCA", "xxxx????xxx?xxx?");
         driveForceOffset = addr == 0 ? 0 : *(int*)(addr + 4);
     }
@@ -161,7 +160,7 @@ void VehicleExtensions::initOffsets() {
     addr = mem::FindPattern("\x0F\xBA\xAB\xEC\x01\x00\x00\x09\x0F\x2F\xB3\x40\x01\x00\x00\x48\x8B\x83\x20\x01\x00\x00", 
                             "xx?????xxx???xxxx?????");
     steeringMultOffset = addr == 0 ? 0 : *(int*)(addr + 11);
-    gLogger.Write(vehicleFlagsOffset == 0 ? WARN : DEBUG, "Steering Multiplier Offset: 0x%X", steeringMultOffset);
+    gLogger.Write(steeringMultOffset == 0 ? WARN : DEBUG, "Steering Multiplier Offset: 0x%X", steeringMultOffset);
 
     addr = mem::FindPattern("\x75\x11\x48\x8b\x01\x8b\x88", "xxxxxxx");
     wheelFlagsOffset = addr == 0 ? 0 : *(int*)(addr + 7);
@@ -180,7 +179,12 @@ void VehicleExtensions::initOffsets() {
     wheelAngularVelocityOffset = addr == 0 ? 0 : (*(int*)(addr + 8)) + 0xc;
     gLogger.Write(wheelAngularVelocityOffset == 0 ? WARN : DEBUG, "Wheel Angular Velocity Offset: 0x%X", wheelAngularVelocityOffset);
 
-    addr = mem::FindPattern("\x0F\x2F\x81\xBC\x01\x00\x00\x0F\x97\xC0\xEB\xDA", "xx???xxxxxxx");
+    if (g_gameVersion >= G_VER_1_0_1737_0_STEAM) {
+        addr = mem::FindPattern("\x0F\x2F\x81\xBC\x01\x00\x00" "\x0F\x97\xC0" "\xEB\x00" "\xD1\x00", "xx???xx" "xxx" "x?" "x?");
+    }
+    else {
+        addr = mem::FindPattern("\x0F\x2F\x81\xBC\x01\x00\x00" "\x0F\x97\xC0\xEB\xDA", "xx???xx" "xxxxx");
+    }
     wheelSteeringAngleOffset = addr == 0 ? 0 : *(int*)(addr + 3);
     gLogger.Write(wheelSteeringAngleOffset == 0 ? WARN : DEBUG, "Wheel Steering Angle Offset: 0x%X", wheelSteeringAngleOffset);
 
@@ -267,8 +271,8 @@ float* VehicleExtensions::GetGearRatioPtr(Vehicle handle, uint8_t gear) {
 std::vector<float> VehicleExtensions::GetGearRatios(Vehicle handle) {
     if (gearRatiosOffset == 0) return {};
     auto address = GetAddress(handle);
-    std::vector<float> ratios(g_numGears);
-    for (int gear = 0; gear < g_numGears; ++gear) {
+    std::vector<float> ratios(GetTopGear(handle) + 1);
+    for (int gear = 0; gear < GetTopGear(handle) + 1; ++gear) {
         ratios[gear] = *reinterpret_cast<float *>(address + gearRatiosOffset + gear * sizeof(float));
     }
     return ratios;
@@ -277,7 +281,7 @@ std::vector<float> VehicleExtensions::GetGearRatios(Vehicle handle) {
 void VehicleExtensions::SetGearRatios(Vehicle handle, const std::vector<float>& values) {
     if (gearRatiosOffset == 0) return;
     auto address = GetAddress(handle);
-    for (uint8_t gear = 0; gear <= values.size(); ++gear) {
+    for (uint8_t gear = 0; gear < values.size(); ++gear) {
         *reinterpret_cast<float *>(address + gearRatiosOffset + gear * sizeof(float)) = values[gear];
     }
 }
