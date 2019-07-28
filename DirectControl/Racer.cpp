@@ -11,6 +11,9 @@
 #include "Memory/VehicleExtensions.hpp"
 #include "Settings.h"
 
+// TODO1: Distance between racers
+// TODO2: Start coord after spawn should be closest to track it's at.
+
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
 //    0x36A83D84, // CLEAR
@@ -29,6 +32,13 @@ const std::vector<Hash> headLightsOnWeathers = {
     0xC91A3202, // HALLOWEEN
 };
 
+size_t getPointsBetween(const std::vector<Point> & coords, size_t a, size_t b) {
+    if (b < a) {
+        return (b + coords.size()) - a;
+    }
+    return b - a;
+};
+
 Racer::Racer(Vehicle vehicle)
     : mVehicle(vehicle)
     , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
@@ -36,7 +46,8 @@ Racer::Racer(Vehicle vehicle)
     , mActive(gSettings.AIDefaultActive)
     , mDebugView(gSettings.AIShowDebug)
     , mDead(false)
-    , mTrackIdx(0)
+    , mTrackCoords(nullptr) // TODO: SET
+    , mTrackIdx(0) // TODO: SET
     , mLapTimer(0)
     , mLapTime(0)
     , mCurrentLap(0)
@@ -639,8 +650,8 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     float aiGndZ = 0.0f;
     float laGndZ = 0.0f;
     Vector3 laPhy = nextPositionBrake;// (nextPositionVelocity + turnWorld) * 0.5f;
-    bool aiGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(aiPosition.x, aiPosition.y, aiPosition.z, &aiGndZ, 0);
-    bool laGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(laPhy.x, laPhy.y, laPhy.z, &laGndZ, 0);
+    bool aiGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(aiPosition.x, aiPosition.y, aiPosition.z + aiDim.z, &aiGndZ, 0);
+    bool laGnd = GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(laPhy.x, laPhy.y, laPhy.z + aiDim.z, &laGndZ, 0);
 
     if (aiGnd && laGnd) {
         float drop = aiGndZ - laGndZ;
@@ -649,10 +660,10 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
         if (drop > gSettings.AIElevationDropThreshold) {
             maxBrake *= dropDangerMult;
 
-            //showText(0.0f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
-            //showText(0.0f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
-            //showText(0.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
-            //showText(0.0f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
+            showText(0.2f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
+            showText(0.2f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
+            //showText(2.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
+            showText(0.2f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
         }
     }
 
@@ -699,6 +710,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
 }
 
 void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
+    // TODO: mTrackCoords = &coords;
     if (mStatusTimer.Expired()) {
         mStatusTimer.Reset(GetRand(10000, 2000));
         updateStatus();
@@ -765,6 +777,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         displayDebugInfo(inputs, dbgInfo);
 
     mSteerPrev = newSteer;
+    updateLapTimers(coords); // prevIdx was updated here so need to be low
 }
 
 void Racer::updateStatus() {
@@ -783,28 +796,34 @@ void Racer::updateStatus() {
     }
 }
 
-//void Racer::updateLapTimers(const std::vector<Point>& points) {
-//    int currPointIdx = -1;
-//
-//    float smallestToAi = 10000.0f;
-//    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-//    for (auto i = 0ull; i < points.size(); ++i) {
-//        float distanceAi = Distance(aiPosition, points[i].v);
-//        if (distanceAi < smallestToAi) {
-//            smallestToAi = distanceAi;
-//            currPointIdx = i;
-//        }
-//    }
-//
-//    if (currPointIdx < mTrackIdx && currPointIdx < 10 && mTrackIdx > points.size() - 11) {
-//        mLapTime = mLapTimer.Elapsed();
-//        mLapTimer.Reset();
-//    }
-//
-//    if (currPointIdx > mTrackIdx || currPointIdx == 0) {
-//        mTrackIdx = currPointIdx;
-//    }
-//}
+void Racer::updateLapTimers(const std::vector<Point>& points) {
+    size_t currPointIdx = mTrackIdx;
+    bool finishPassed = false;
+    // Find coord closest to ourselves
+    float smallestToAi = 10000.0f;
+    Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
+    for (auto i = 0ull; i < points.size(); ++i) {
+        float distanceAi = Distance(aiPosition, points[i].v);
+        if (distanceAi < smallestToAi) {
+            smallestToAi = distanceAi;
+            currPointIdx = i;
+        }
+    }
+
+    // TODO: Verify if it always successfully passes point zero / no overlap / doesn't jump
+    if (getPointsBetween(points, mTrackIdx, currPointIdx) < 10) {
+        if (currPointIdx == 0 && mTrackIdx == points.size() - 1)
+            finishPassed = true;
+        // We've progressed! Great!
+        mTrackIdx = currPointIdx;
+    }
+
+    if (finishPassed) {
+        mLapTime = mLapTimer.Elapsed();
+        mLapTimer.Reset();
+        //showNotification("Yay, lap!");
+    }
+}
 
 void Racer::updateAux() {
     bool headlightsOn = false;
@@ -954,7 +973,7 @@ Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vecto
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
                         float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source, uint32_t& index) {
     float smallestToLa = 9999.9f;
-    int smallestToLaIdx = 0;
+    size_t smallestToLaIdx = mTrackIdx;
     float smallestToAi = 9999.9f;
     int smallestToAiIdx = 0;
 
@@ -980,26 +999,53 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
         }
     }
 
-    int returnIndex = smallestToLaIdx;
+    size_t returnIndex = smallestToLaIdx;
     source = LookAheadSource::Normal;
 
-    // Only consider viable nodes, to not cut the track. 
-    // Significant overshoot still makes AI choose closest track node, 
-    // so prevent this from happening with walls or something. 
-    int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
-    int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
+    //// Only consider viable nodes, to not cut the track. 
+    //// Significant overshoot still makes AI choose closest track node, 
+    //// so prevent this from happening with walls or something. 
+    //int nodeToConsiderMin = static_cast<int>(1.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
+    //int nodeToConsiderMax = static_cast<int>(2.0f * lookAheadDistance / Distance(coords[smallestToAiIdx].v, coords[(smallestToAiIdx + 1) % coords.size()].v));
 
-    if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) &&
-        smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
-        // Ensure track is followed continuously (no cutting off entire sections)
-        returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
-        source = LookAheadSource::Continuous;
+    //if ((smallestToLaIdx > smallestToAiIdx + nodeToConsiderMax || smallestToLaIdx < smallestToAiIdx - nodeToConsiderMax) &&
+    //    smallestToAiIdx > nodeToConsiderMin && smallestToAiIdx < coords.size() - nodeToConsiderMin) {
+    //    // Ensure track is followed continuously (no cutting off entire sections)
+    //    returnIndex = (smallestToAiIdx + nodeToConsiderMin) % coords.size();
+    //    source = LookAheadSource::Continuous;
+    //}
+    //else if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
+    //    // Ensure going forwards
+    //    returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
+    //    source = LookAheadSource::Forward;
+    //}
+
+    // OK!!!! SO!!! ok uhhh
+    // we need to make sure we traverse the track in a consistent and smooth way
+    // this means a few things that went wrong before in the commented code above
+    // 1. deal with crossings of the track, a figure eight, so to say
+    // 2. deal with returning to track after leaving - previously it fishtailed because it focused too much on start
+    // 3. deal with start/stop since i have no idea how to handle the index rollover situation
+
+
+
+    // oh no, it wants to go backwards somehow
+    if (getPointsBetween(coords, mTrackIdx, returnIndex) > static_cast<size_t>(lookAheadDistance * 1.50f)) {
+        returnIndex = (mTrackIdx + static_cast<size_t>(lookAheadDistance)) % coords.size();
+        //showText(0.0f, 0.3f, 0.25f, "Tryna cheat???");
     }
-    else if (smallestToAiIdx >= smallestToLaIdx && smallestToAiIdx - smallestToLaIdx < coords.size() / 2) {
-        // Ensure going forwards
-        returnIndex = (smallestToAiIdx + (int)lookAheadDistance) % coords.size();
-        source = LookAheadSource::Forward;
+
+    // oh no it's tryna cheat
+    //if (getPointsBetween(coords, mTrackIdx, returnIndex) > static_cast<size_t>(lookAheadDistance * 1.05f)) {
+    //    returnIndex = (mTrackIdx + static_cast<size_t>(lookAheadDistance)) % coords.size();
+    //}
+
+    // oh no it's too close to going perpendicular
+    if (getPointsBetween(coords, mTrackIdx, returnIndex) < static_cast<size_t>(lookAheadDistance * 0.50f)) {
+        returnIndex = (mTrackIdx + static_cast<size_t>(lookAheadDistance)) % coords.size();
+        //showText(0.0f, 0.3f, 0.25f, "2close??");
     }
+
     index = returnIndex;
     return coords[returnIndex].v;
 }

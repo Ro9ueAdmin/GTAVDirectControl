@@ -198,12 +198,13 @@ protected:
      * \brief                   Update lap timing
      * \param [in] points       List of track coords
      */
-    //void updateLapTimers(const std::vector<Point>& points);
+    void updateLapTimers(const std::vector<Point>& points);
 
     /**
      * \brief                   Update auxiliary stuff, like lights and stuff.
      */
     void updateAux();
+    Point findClosestNode();
 
     /**
      * \brief                   Update stuck detection timer.
@@ -275,6 +276,7 @@ protected:
     bool mDebugView;                // Debug information display state.
     bool mDead;                     // Stop processing when dead
 
+    const std::vector<Point>* mTrackCoords; // ptr to track coords, CANNOT be nullptr. TODO: Make class
     size_t mTrackIdx;               // Last valid track index / checkpoint
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
