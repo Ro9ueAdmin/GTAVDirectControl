@@ -127,6 +127,7 @@ void MakeAi(Vehicle vehicle, bool enableAi) {
             }
             if (!found) {
                 gRacers.push_back(std::make_unique<Racer>(vehicle));
+                gRacers.back()->SetTrack(Session::Get().GetTrack());
                 showNotification(fmt("Adding AI to ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
             else {
@@ -194,6 +195,7 @@ void AddAi(Vehicle vehicle, Ped playerPed) {
         Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
         Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
         gRacers.push_back(std::make_unique<Racer>(spawnedVehicle));
+        gRacers.back()->SetTrack(Session::Get().GetTrack());
     }
 }
 
@@ -248,6 +250,7 @@ void RecordTrack(Ped playerPed, bool start) {
 
 void ClearTrack(Ped playerPed) {
     Session::Get().Reset();
+
     //Session::Get().GetTrack().Append(Point(ENTITY::GET_ENTITY_COORDS(playerPed, true), 5.0f));
     gRecording = false;
     showNotification("~r~Record cleared");
@@ -344,12 +347,19 @@ void LoadTrack() {
 
     Session::Get().SetTrack(Track("", trackCoords));
 
+    for (auto& racer : gRacers) {
+        racer->SetTrack(Session::Get().GetTrack());
+    }
+
     showNotification(fmt("~g~Track loaded\n"
         "Distance: %.2f km", Session::Get().GetTrack().Length()));
 }
 
 void ReverseTrack() {
     Session::Get().ReverseTrack();
+    for (auto& racer : gRacers) {
+        racer->SetTrack(Session::Get().GetTrack());
+    }
 }
 
 void DebugTrack() {

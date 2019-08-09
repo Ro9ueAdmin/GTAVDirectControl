@@ -11,8 +11,7 @@
 #include "Memory/VehicleExtensions.hpp"
 #include "Settings.h"
 
-// TODO1: Distance between racers
-// TODO2: Start coord after spawn should be closest to track it's at.
+// TODO 1: Distance between racers
 
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -46,8 +45,8 @@ Racer::Racer(Vehicle vehicle)
     , mActive(gSettings.AIDefaultActive)
     , mDebugView(gSettings.AIShowDebug)
     , mDead(false)
-    , mTrackCoords(nullptr) // TODO: SET
-    , mTrackIdx(0) // TODO: SET
+    , mTrack(nullptr)   // Set to with SetTrack after creation!
+    , mTrackIdx(0)      // Set to with SetTrack after creation!
     , mLapTimer(0)
     , mLapTime(0)
     , mCurrentLap(0)
@@ -80,6 +79,15 @@ Racer::~Racer() {
     }
     catch (...) {
         // Discard exceptions
+    }
+}
+
+void Racer::SetTrack(const Track& t) {
+    mTrack = &t;
+    findClosestNode(mTrackIdx);
+    if (mTrackIdx == std::numeric_limits<size_t>::max()) {
+        // TODO: NOTIFY
+        mActive = false;
     }
 }
 
@@ -407,9 +415,9 @@ float Racer::avgCenterDiff(const std::vector<Point>& coords, uint32_t idx) {
     return diff;
 }
 
-void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians,
+void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadians,
                         float actualAngle, Racer::InputInfo& inputs, DebugInfo& dbgInfo) {
-
+    const std::vector<Point>& coords = mTrack->Points();
     std::vector<Vector3> overtakePoints;
     Vector3 aiDim = GetEntityDimensions(mVehicle);
     Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
@@ -709,8 +717,7 @@ void Racer::getControls(const std::vector<Point> &coords, const std::vector<Vehi
     //dbgInfo.trackLimits above
 }
 
-void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents) {
-    // TODO: mTrackCoords = &coords;
+void Racer::UpdateControl(const std::vector<Vehicle> &opponents) {
     if (mStatusTimer.Expired()) {
         mStatusTimer.Reset(GetRand(10000, 2000));
         updateStatus();
@@ -726,7 +733,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
     }
 
     //updateLapTimers(coords);
-    updateStuck(coords);
+    updateStuck();
 
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
@@ -737,7 +744,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
 
     DebugInfo dbgInfo{};
     InputInfo inputs = { 0.0f, 1.0f, 0.0f, false };
-    getControls(coords, opponents, limitRadians, actualAngle, inputs, dbgInfo);
+    getControls(opponents, limitRadians, actualAngle, inputs, dbgInfo);
 
     if (mStuckTimer.Expired()) {
         inputs.throttle = -0.4f;
@@ -777,7 +784,7 @@ void Racer::UpdateControl(const std::vector<Point> &coords, const std::vector<Ve
         displayDebugInfo(inputs, dbgInfo);
 
     mSteerPrev = newSteer;
-    updateLapTimers(coords); // prevIdx was updated here so need to be low
+    updateLapTimers(); // prevIdx was updated here so need to be low
 }
 
 void Racer::updateStatus() {
@@ -796,7 +803,8 @@ void Racer::updateStatus() {
     }
 }
 
-void Racer::updateLapTimers(const std::vector<Point>& points) {
+void Racer::updateLapTimers() {
+    const std::vector<Point>& points = mTrack->Points();
     size_t currPointIdx = mTrackIdx;
     bool finishPassed = false;
     // Find coord closest to ourselves
@@ -835,23 +843,36 @@ void Racer::updateAux() {
     }
 }
 
-void Racer::teleportToClosestNode(const std::vector<Point>& coords) {
+Point Racer::findClosestNode(size_t& trackIdx) {
+    Point closestPoint{};
+    trackIdx = std::numeric_limits<size_t>::max();
+
     float smallestDistanceAI = 10000.0f;
     Vector3 aiPosition = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
-    Vector3 aiTrackClosest = aiPosition;
-    for (auto& point : coords) {
+    for (size_t i = 0; i < mTrack->Points().size(); ++i) {
+        Point point = mTrack->Points()[i];
         Vector3 coord = point.v;
         float distanceAI = Distance(aiPosition, coord);
         if (distanceAI < smallestDistanceAI) {
             smallestDistanceAI = distanceAI;
-            aiTrackClosest = point.v;
+            closestPoint = point;
+            trackIdx = i;
         }
     }
-    ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.x, aiTrackClosest.y, aiTrackClosest.z, 0, 0, 0, 0);
+    return closestPoint;
+}
+
+void Racer::teleportToClosestNode() {
+    size_t trackIdx;
+
+    Point closestPoint = findClosestNode(trackIdx);
+
+    ENTITY::SET_ENTITY_COORDS(mVehicle, closestPoint.v.x, closestPoint.v.y, closestPoint.v.z, 0, 0, 0, 0);
     VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
 }
 
-void Racer::updateStuck(const std::vector<Point> &coords) {
+void Racer::updateStuck() {
+    auto coords = mTrack->Points();
     if (coords.size() < 2 || !mActive || VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1) == PLAYER::PLAYER_PED_ID()) {
         mStuckCount = 0;
         mStuckTimer.Reset();
@@ -901,7 +922,7 @@ void Racer::updateStuck(const std::vector<Point> &coords) {
                 mStuckCount));
         }
 
-        teleportToClosestNode(coords);
+        teleportToClosestNode();
         mStuckCount = 0;
         mStuckCountTimer.Reset();
     }

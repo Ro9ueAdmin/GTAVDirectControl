@@ -81,9 +81,10 @@ void UpdateAI(){
     int npcCount = worldGetAllVehicles(npcs.data(), 1024);
     npcs.resize(npcCount);
 
-    auto& trackCoords = Session::Get().GetTrack().Points();
+    auto& track = Session::Get().GetTrack();
+    auto& trackCoords = track.Points();
     for (auto& racer : gRacers) {
-        racer->UpdateControl(trackCoords, npcs);
+        racer->UpdateControl(npcs);
     }    
 
     if (gRecording) {

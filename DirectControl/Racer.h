@@ -36,20 +36,29 @@ public:
     ~Racer();
 
     /**
-     * \brief                  Check if racer is dead.
-     * \return                 true when dead.
+     * \brief                   Sets the current track and sets closest node.
+     * \param [in] t            Track to set.
+     */
+    void SetTrack(const Track& t);
+
+    /**
+     * \brief                   Check if racer is dead.
+     * \return                  true when dead.
      */
     bool IsDead();
 
+    /**
+     * \brief                   Fix the AIs vehicle.
+     */
     void Fix();
 
     /**
      * \brief                   Update vehicle control inputs based on AI decision making.
      *                          Needs to be called every tick.
-     * \param [in] coords       Input list of coordinates of track to follow.
+     * \param [in] track        Track AI needs to follow.
      * \param [in] opponents    Input list of opponents.
      */
-    void UpdateControl(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents);
+    void UpdateControl(const std::vector<Vehicle> &opponents);
 
     /**
      * \brief                   Get the handle to the racer vehicle.
@@ -147,7 +156,7 @@ protected:
      * \param [out] inputs      Vehicle input information.
      * \param [out] dbgInfo     Additional debugging information.
      */
-    void getControls(const std::vector<Point> &coords, const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
+    void getControls(const std::vector<Vehicle> &opponents, float limitRadians, float actualAngle,
                      InputInfo& inputs, DebugInfo& dbgInfo);
 
     /**
@@ -198,13 +207,13 @@ protected:
      * \brief                   Update lap timing
      * \param [in] points       List of track coords
      */
-    void updateLapTimers(const std::vector<Point>& points);
+    void updateLapTimers();
 
     /**
      * \brief                   Update auxiliary stuff, like lights and stuff.
      */
     void updateAux();
-    Point findClosestNode();
+    Point findClosestNode(size_t& trackIdx);
 
     /**
      * \brief                   Update stuck detection timer.
@@ -216,7 +225,7 @@ protected:
      *                          Timer to determine AI out-of-track duration.
      * \param [in] coords       Used to not unstuck while there's no track.
      */
-    void updateStuck(const std::vector<Point> &coords);
+    void updateStuck();
 
     /**
      * \brief                   Find vehicle closest to position, excluding itself.
@@ -261,7 +270,7 @@ protected:
      * \brief                   Teleport to node on track closest to AI.
      * \param [in] coords       List of track coords
      */
-    void teleportToClosestNode(const std::vector<Point>& coords);
+    void teleportToClosestNode();
 
     /**
      * \brief                   Display decision-making information and vehicle stats.
@@ -276,7 +285,7 @@ protected:
     bool mDebugView;                // Debug information display state.
     bool mDead;                     // Stop processing when dead
 
-    const std::vector<Point>* mTrackCoords; // ptr to track coords, CANNOT be nullptr. TODO: Make class
+    const Track* mTrack;            // Current track. Ptr since we don't want a copy per AI.
     size_t mTrackIdx;               // Last valid track index / checkpoint
     Timer mLapTimer;                // Lap timer
     int64_t mLapTime;               // Last lap time
