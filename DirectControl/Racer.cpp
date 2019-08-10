@@ -12,6 +12,7 @@
 #include "Settings.h"
 
 // TODO 1: Distance between racers
+// TODO: reset -> direction
 
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -829,7 +830,10 @@ void Racer::updateLapTimers() {
     if (finishPassed) {
         mLapTime = mLapTimer.Elapsed();
         mLapTimer.Reset();
-        //showNotification("Yay, lap!");
+        uint64_t min = (mLapTime / (1000 * 60)) % 60;
+        uint64_t sec = (mLapTime / 1000) % 60;
+        uint64_t mil = (mLapTime % 1000);
+        notify(fmt("Last lap: %d:%02d.%03d", min, sec, mil));
     }
 }
 
@@ -891,12 +895,7 @@ void Racer::updateStuck() {
     }
 
     if (mUnstuckTimer.Expired()) {
-        if (mDebugView) {
-            showNotification(fmt("Attempting to unstuck %s (%s), attempt %d", 
-                getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle), 
-                mStuckCount + 1));
-        }
+        notify(fmt("Unstuck attempt %d", mStuckCount + 1));
         if (!VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(mVehicle)) {
             VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
         }
@@ -915,13 +914,7 @@ void Racer::updateStuck() {
     }
 
     if (mStuckCount > mStuckCountThreshold) {
-        if (mDebugView) {
-            showNotification(fmt("Teleporting %s (%s) to track (after %d attempts)",
-                getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle),
-                mStuckCount));
-        }
-
+        notify(fmt("Teleporting to track (after %d attempts)", mStuckCount));
         teleportToClosestNode();
         mStuckCount = 0;
         mStuckCountTimer.Reset();
@@ -943,12 +936,7 @@ void Racer::updateStuck() {
             mOutsideTimer.Reset();
         }
         if (mOutsideTimer.Expired()) {
-            if (mDebugView) {
-                showNotification(fmt("Teleporting %s (%s) to track (outside track %d millis)", 
-                    getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                    VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle),
-                    mOutsideTimer.Elapsed()));
-            }
+            notify(fmt("Teleporting to track (outside track %d ms)", mOutsideTimer.Elapsed()));
             ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.v.x, aiTrackClosest.v.y, aiTrackClosest.v.z, 0, 0, 0, 0);
             VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
             mOutsideTimer.Reset();
@@ -1201,4 +1189,19 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     //auto currentLapTime = mLapTimer.Elapsed();
     //std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
     //std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
+}
+
+void Racer::notify(const std::string& msg) {
+    notify(msg, false);
+}
+
+void Racer::notify(const std::string& msg, bool alwaysShow) {
+    if (mDebugView || alwaysShow) {
+        std::string name = getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle));
+        std::string plate = VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle);
+
+        showNotification(fmt("~b~%s (~r~%s~b~)\n~w~%s", 
+            name.c_str(), plate.c_str(), msg.c_str()), 
+            &mNotifyHandle);
+    }
 }

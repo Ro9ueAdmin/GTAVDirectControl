@@ -279,11 +279,15 @@ protected:
      */
     void displayDebugInfo(const Racer::InputInfo& inputs, const DebugInfo& dbgInfo);
 
+    void notify(const std::string& msg);
+    void notify(const std::string& msg, bool alwaysShow);
+
     Vehicle mVehicle;               // The vehicle the racer AI uses.
     BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
     bool mDead;                     // Stop processing when dead
+    int mNotifyHandle;
 
     const Track* mTrack;            // Current track. Ptr since we don't want a copy per AI.
     size_t mTrackIdx;               // Last valid track index / checkpoint
