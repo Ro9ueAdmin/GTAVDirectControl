@@ -12,7 +12,6 @@
 #include "Settings.h"
 
 // TODO 1: Distance between racers
-// TODO: reset -> direction
 
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -866,12 +865,15 @@ Point Racer::findClosestNode(size_t& trackIdx) {
     return closestPoint;
 }
 
-void Racer::teleportToClosestNode() {
-    size_t trackIdx;
-
-    Point closestPoint = findClosestNode(trackIdx);
-
-    ENTITY::SET_ENTITY_COORDS(mVehicle, closestPoint.v.x, closestPoint.v.y, closestPoint.v.z, 0, 0, 0, 0);
+void Racer::teleportToLastNode() {
+    size_t trackSz = mTrack->Points().size();
+    Point lastPoint = mTrack->Points()[mTrackIdx];
+    Point nextPoint = mTrack->Points()[(mTrackIdx + 1) % trackSz];
+    Vector3 vector = nextPoint.v - lastPoint.v;
+    vector = Normalize(vector);
+    float heading = rad2deg(atan2(vector.y, vector.x)) - 90.0f;
+    ENTITY::SET_ENTITY_COORDS(mVehicle, lastPoint.v.x, lastPoint.v.y, lastPoint.v.z, 0, 0, 0, 0);
+    ENTITY::SET_ENTITY_HEADING(mVehicle, heading);
     VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
 }
 
@@ -915,7 +917,7 @@ void Racer::updateStuck() {
 
     if (mStuckCount > mStuckCountThreshold) {
         notify(fmt("Teleporting to track (after %d attempts)", mStuckCount));
-        teleportToClosestNode();
+        teleportToLastNode();
         mStuckCount = 0;
         mStuckCountTimer.Reset();
     }
@@ -937,8 +939,7 @@ void Racer::updateStuck() {
         }
         if (mOutsideTimer.Expired()) {
             notify(fmt("Teleporting to track (outside track %d ms)", mOutsideTimer.Elapsed()));
-            ENTITY::SET_ENTITY_COORDS(mVehicle, aiTrackClosest.v.x, aiTrackClosest.v.y, aiTrackClosest.v.z, 0, 0, 0, 0);
-            VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+            teleportToLastNode();
             mOutsideTimer.Reset();
         }
     }

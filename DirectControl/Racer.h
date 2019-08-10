@@ -270,7 +270,7 @@ protected:
      * \brief                   Teleport to node on track closest to AI.
      * \param [in] coords       List of track coords
      */
-    void teleportToClosestNode();
+    void teleportToLastNode();
 
     /**
      * \brief                   Display decision-making information and vehicle stats.
