@@ -146,6 +146,9 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>$(DXSDK_DIR)Lib\x64\XInput.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>PostBuild.bat $(ProjectDir)$(OutDir) "D:\Games\Steam\steamapps\common\Grand Theft Auto V" $(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Cheats.cpp" />
