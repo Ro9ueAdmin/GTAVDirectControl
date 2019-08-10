@@ -170,8 +170,9 @@ std::vector<Vector3> Racer::findOvertakingPoints(Vehicle npc) {
         float diffHeading = atan2(sin(npcHeading - aiHeading), cos(npcHeading - aiHeading));
 
         // Make oval shape around entity to overtake, based on dimensions.
-        float distMultX = npcDim.x * 0.5f + aiDim.x;
-        float distMultY = npcDim.y * 0.5f + aiDim.x;
+        // Add 0.5m margin
+        float distMultX = npcDim.x * 0.5f + aiDim.x + 0.5f;
+        float distMultY = npcDim.y * 0.5f + aiDim.x + 0.5f;
 
         // Translate polar coords to cartesian offset multipliers based on a unit circle
         float mulX = -cos(diffHeading + deg2rad(180.0f));
@@ -250,7 +251,8 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
         }
     }
 
-    Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
+    // +5% self-speed over-estimation, sooner evasion/same-speed evasion
+    Vector3 aiNextPVel = aiPosition + ENTITY::GET_ENTITY_VELOCITY(mVehicle) * 1.05f;
     Vector3 aiNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(mVehicle);
     Vector3 aiNextPRot = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(aiNextVRot.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(aiNextVRot.z), 0.0f);
     Vector3 aiPredPos = (aiNextPVel + aiNextPRot) * 0.5f;
@@ -259,10 +261,10 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     Vector3 aiForward = ENTITY::GET_ENTITY_FORWARD_VECTOR(mVehicle);
 
     // TODO: ai self size scale
-    Vector3 aiPredOffLeftRear = GetOffsetInWorldCoords(aiPredPos,   aiRot, aiForward, Vector3_{ -aiDim.x * 0.75f, -aiDim.y * 0.75f, 0.0f });
-    Vector3 aiPredOffLeftFront = GetOffsetInWorldCoords(aiPredPos,  aiRot, aiForward, Vector3_{ -aiDim.x * 0.75f,  aiDim.y * 0.75f, 0.0f });
-    Vector3 aiPredOffRightRear = GetOffsetInWorldCoords(aiPredPos,  aiRot, aiForward, Vector3_{  aiDim.x * 0.75f, -aiDim.y * 0.75f, 0.0f });
-    Vector3 aiPredOffRightFront = GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{  aiDim.x * 0.75f,  aiDim.y * 0.75f, 0.0f });
+    Vector3 aiPredOffLeftRear =   GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{ -aiDim.x * 0.5f - 0.5f, -aiDim.y * 0.5f - 0.5f, 0.0f });
+    Vector3 aiPredOffLeftFront =  GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{ -aiDim.x * 0.5f - 0.5f,  aiDim.y * 0.5f + 0.5f, 0.0f });
+    Vector3 aiPredOffRightRear =  GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{  aiDim.x * 0.5f + 0.5f, -aiDim.y * 0.5f - 0.5f, 0.0f });
+    Vector3 aiPredOffRightFront = GetOffsetInWorldCoords(aiPredPos, aiRot, aiForward, Vector3_{  aiDim.x * 0.5f + 0.5f,  aiDim.y * 0.5f + 0.5f, 0.0f });
 
     Vector3 npcNextPVel = npcPosition + ENTITY::GET_ENTITY_VELOCITY(npc);
     Vector3 npcNextVRot = ENTITY::GET_ENTITY_ROTATION_VELOCITY(npc);
@@ -273,13 +275,13 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     Vector3 npcForward = ENTITY::GET_ENTITY_FORWARD_VECTOR(npc);
 
     // TODO: ai npc size scale
-    Vector3 npcPredOffLeftRear = GetOffsetInWorldCoords(npcPredPos,   npcRot, npcForward, Vector3_{ -npcDim.x * 0.75f, -npcDim.y * 0.75f, 0.0f });
-    Vector3 npcPredOffLeftFront = GetOffsetInWorldCoords(npcPredPos,  npcRot, npcForward, Vector3_{ -npcDim.x * 0.75f,  npcDim.y * 0.75f, 0.0f });
-    Vector3 npcPredOffRightRear = GetOffsetInWorldCoords(npcPredPos,  npcRot, npcForward, Vector3_{  npcDim.x * 0.75f, -npcDim.y * 0.75f, 0.0f });
-    Vector3 npcPredOffRightFront = GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{  npcDim.x * 0.75f,  npcDim.y * 0.75f, 0.0f });
+    Vector3 npcPredOffLeftRear =   GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{ -npcDim.x * 0.5f - 0.5f, -npcDim.y * 0.5f - 0.5f, 0.0f });
+    Vector3 npcPredOffLeftFront =  GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{ -npcDim.x * 0.5f - 0.5f,  npcDim.y * 0.5f + 0.5f, 0.0f });
+    Vector3 npcPredOffRightRear =  GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{  npcDim.x * 0.5f + 0.5f, -npcDim.y * 0.5f - 0.5f, 0.0f });
+    Vector3 npcPredOffRightFront = GetOffsetInWorldCoords(npcPredPos, npcRot, npcForward, Vector3_{  npcDim.x * 0.5f + 0.5f,  npcDim.y * 0.5f + 0.5f, 0.0f });
 
     bool intersect2 =
-        Distance(aiPredPos, npcPredPos) < std::max(aiDim.y, npcDim.y);
+        Distance(aiPredPos, npcPredPos) < std::max(aiDim.y + 0.5f, npcDim.y + 0.5f);
 
     bool intersect3 =
         Intersect(aiPosition, aiPredPos, npcPredOffLeftRear, npcPredOffRightRear) ||    // ai -> rear bumper
