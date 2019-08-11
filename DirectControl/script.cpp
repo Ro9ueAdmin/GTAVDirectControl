@@ -141,31 +141,7 @@ void UpdateCheats() {
 
 void main() {
     gLogger.Write(INFO, "Direct vehicle control test script");
-    gLogger.Write(INFO, "Direct Control Cheats:");
-    gLogger.Write(INFO, "\"cc\" to take control of a non-controlled car");
-    gLogger.Write(INFO, "\"cc\" to release control of a controlled car");
-    gLogger.Write(INFO, "\"pp\" to switch to passenger seat ");
-    gLogger.Write(INFO, "\"dbgp\" to toggle debug lines");
-    gLogger.Write(INFO, "Direct Control Controls:");
-    gLogger.Write(INFO, "IJKL as WASD, U is reverse, O is handbrake");
-    gLogger.Write(INFO, "Gamepad #2 for analog input. Hold LB to reverse with throttle.");
-    gLogger.Write(INFO, "--------------------------------------------------------------------------------");
-    gLogger.Write(INFO, "AI Cheats:");
-    gLogger.Write(INFO, "\"addai\" to add ai cars. Follow onscreen instructions. Spawn to your right!");
-    gLogger.Write(INFO, "\"delai\" to remove AI cars (release to game)");
-    gLogger.Write(INFO, "\"startai\" to make AI follow current track (default is already started)");
-    gLogger.Write(INFO, "\"stopai\" to make AI stop following track");
-    gLogger.Write(INFO, "\"fixai\" to fix all AI cars");
-    gLogger.Write(INFO, "\"dbgai0\" to disable debug lines");
-    gLogger.Write(INFO, "\"dbgai1\" to enable debug lines");
-    gLogger.Write(INFO, "--------------------------------------------------------------------------------");
-    gLogger.Write(INFO, "Track Cheats:");
-    gLogger.Write(INFO, "\"startrecord\" to start recording current location. 1m interval");
-    gLogger.Write(INFO, "\"stoprecord\" to stop recording current location");
-    gLogger.Write(INFO, "\"loadtrack\" to load track from file (json)");
-    gLogger.Write(INFO, "\"savetrack\" to save current track to file (json)");
-    gLogger.Write(INFO, "\"cleartrack\" to clear all points on current track");
-    gLogger.Write(INFO, "\"drawtrack\" to toggle track drawing");
+    gLogger.Write(INFO, "Direct Control Cheats: Refer to the GitHub page");
     gLogger.Write(INFO, "");
 
     gSettings.ReadSettings("./DirectControl/settings.ini");
