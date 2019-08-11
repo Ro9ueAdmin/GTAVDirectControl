@@ -7,7 +7,7 @@
 #include "Memory/VehicleExtensions.hpp"
 
 PlayerRacer::PlayerRacer(Vehicle vehicle, int playerNumber) :
-    Racer(vehicle),
+    Racer(vehicle, ""),
     mXInput(playerNumber) {
     mBlip.SetName(fmt("Player %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip.SetColor(BlipColorWhite);

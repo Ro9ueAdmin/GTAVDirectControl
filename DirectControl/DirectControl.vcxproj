@@ -157,6 +157,7 @@
     <ClCompile Include="Memory\VehicleExtensions.cpp" />
     <ClCompile Include="PlayerRacer.cpp" />
     <ClCompile Include="Racer.cpp" />
+    <ClCompile Include="RacerConfig.cpp" />
     <ClCompile Include="script.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="Track.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="Memory\Versions.h" />
     <ClInclude Include="PlayerRacer.h" />
     <ClInclude Include="Racer.h" />
+    <ClInclude Include="RacerConfig.h" />
     <ClInclude Include="script.h" />
     <ClInclude Include="Session.h" />
     <ClInclude Include="Settings.h" />

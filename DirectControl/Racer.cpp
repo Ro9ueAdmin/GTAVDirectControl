@@ -9,9 +9,7 @@
 #include "Util/Color.h"
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
-#include "Settings.h"
-
-// TODO 1: Distance between racers
+//#include "Settings.h"
 
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
@@ -38,13 +36,16 @@ size_t getPointsBetween(const std::vector<Point> & coords, size_t a, size_t b) {
     return b - a;
 };
 
-Racer::Racer(Vehicle vehicle)
+Racer::Racer(Vehicle vehicle, const std::string& cfgPath)
     : mVehicle(vehicle)
+    , mCfg(RacerConfig::Parse(cfgPath))
+    , mCfgPath(cfgPath)
     , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
                                              VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
-    , mActive(gSettings.AIDefaultActive)
-    , mDebugView(gSettings.AIShowDebug)
+    , mActive(mCfg.DefaultActive)
+    , mDebugView(mCfg.ShowDebug)
     , mDead(false)
+    , mNotifyHandle(0)
     , mTrack(nullptr)   // Set to with SetTrack after creation!
     , mTrackIdx(0)      // Set to with SetTrack after creation!
     , mLapTimer(0)
@@ -80,6 +81,16 @@ Racer::~Racer() {
     catch (...) {
         // Discard exceptions
     }
+}
+
+void Racer::UpdateConfig(const std::string& path) {
+    if (path.empty()) {
+        mCfg = RacerConfig::Parse(mCfgPath);
+        return;
+    }
+
+    mCfgPath = path;
+    mCfg = RacerConfig::Parse(mCfgPath);
 }
 
 void Racer::SetTrack(const Track& t) {
@@ -423,7 +434,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     std::vector<Vector3> overtakePoints;
     Vector3 aiDim = GetEntityDimensions(mVehicle);
     Vector3 aiNose2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, aiDim.y, 0.0f);
-    float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * gSettings.AILookaheadSteerSpeedMult * 1.5f;
+    float aiLookahead = ENTITY::GET_ENTITY_SPEED(mVehicle) * mCfg.LookaheadSteerSpeedMult * 1.5f;
 
     float searchDistance = aiLookahead > 30.0f ? aiLookahead : 30.0f;
     // Get NPC closest to front of vehicle
@@ -445,18 +456,18 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     float aiSpeed = ENTITY::GET_ENTITY_SPEED(mVehicle);
 
     float aiPitch = ENTITY::GET_ENTITY_PITCH(mVehicle);
-    float pitchClp = abs(aiPitch);// std::clamp(aiPitch, gSettings.AISteerLookAheadPitch, 0.0f);
+    float pitchClp = abs(aiPitch);// std::clamp(aiPitch, mCfg.SteerLookAheadPitch, 0.0f);
     //showText(0.1f, 0.1f, 0.5f, fmt("Pitch: %.03f", pitchClp));
-    float settingLAThrottle = gSettings.AILookaheadThrottleSpeedMult;
+    float settingLAThrottle = mCfg.LookaheadThrottleSpeedMult;
 
-    float settingLABrake = gSettings.AILookaheadBrakeSpeedMult;
-    float settingLASteer = gSettings.AILookaheadSteerSpeedMult;
+    float settingLABrake = mCfg.LookaheadBrakeSpeedMult;
+    float settingLASteer = mCfg.LookaheadSteerSpeedMult;
 
-    settingLASteer = map(pitchClp, 0.0f, gSettings.AISteerLookAheadPitch, settingLASteer, settingLABrake);
+    settingLASteer = map(pitchClp, 0.0f, mCfg.SteerLookAheadPitch, settingLASteer, settingLABrake);
 
-    float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, gSettings.AILookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, gSettings.AILookaheadBrakeMinDistance,          9999.0f);
-    float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, gSettings.AILookaheadSteerMinDistance,          9999.0f);
+    float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, mCfg.LookaheadThrottleMinDistance, 9999.0f);
+    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, mCfg.LookaheadBrakeMinDistance,          9999.0f);
+    float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, mCfg.LookaheadSteerMinDistance,          9999.0f);
 
     uint32_t throttleIdx;
     uint32_t brakeIdx;
@@ -518,7 +529,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     float distPerpThrottle = abs((abs(turnThrottle) - 1.5708f) / 1.5708f);
     float distPerpBrake = abs((abs(turnBrake) - 1.5708f) / 1.5708f);
 
-    float steerMult = gSettings.AISteerMult;
+    float steerMult = mCfg.SteerMult;
 
     inputs.throttle = map(aiSpeed, 0.0f, distanceThrottle, 2.0f, 0.0f);
     inputs.throttle *= map(distPerpThrottle, 0.0f, 1.0f, 0.5f, 1.0f);
@@ -529,8 +540,8 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     Vector3 turnWorld = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, ENTITY::GET_ENTITY_SPEED(mVehicle)*-sin(rotationVelocity.z), ENTITY::GET_ENTITY_SPEED(mVehicle)*cos(rotationVelocity.z), 0.0f);
 
     float angle = GetAngleBetween(ENTITY::GET_ENTITY_VELOCITY(mVehicle), turnWorld - aiPosition);
-    float csMult = std::clamp(map(angle, deg2rad(gSettings.AICountersteerIncreaseStartAngle), deg2rad(gSettings.AICountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
-    float spinoutMult = std::clamp(map(angle, deg2rad(gSettings.AIThrottleDecreaseStartAngle), deg2rad(gSettings.AIThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
+    float csMult = std::clamp(map(angle, deg2rad(mCfg.CountersteerIncreaseStartAngle), deg2rad(mCfg.CountersteerIncreaseEndAngle), 1.0f, 2.0f), 0.0f, 2.0f);
+    float spinoutMult = std::clamp(map(angle, deg2rad(mCfg.ThrottleDecreaseStartAngle), deg2rad(mCfg.ThrottleDecreaseEndAngle), 1.0f, 0.0f), 0.0f, 1.0f);
 
     // TODO: Clean up? Check for use outside offroad slippery driving
     // Yank the handbrake when understeering?
@@ -547,7 +558,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
         steeringAngleRelX < turnRelativeNormX && turnRelativeNormX < travelRelative.x) {
         understeering = true;
     }
-    if (understeering && abs(turnSteer) > gSettings.AIUndersteerHandbrakeTrigger && aiSpeed > 5.0f) {
+    if (understeering && abs(turnSteer) > mCfg.UndersteerHandbrakeTrigger && aiSpeed > 5.0f) {
         inputs.handbrake = true;
         inputs.throttle = 0.0f;
     }
@@ -557,7 +568,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     if (isnan(oversteerAngle))
         oversteerAngle = 0.0;
 
-    if (!understeering && oversteerAngle > gSettings.AIOversteerDetectionAngle && aiVelocity.y > 5.0f) {
+    if (!understeering && oversteerAngle > mCfg.OversteerDetectionAngle && aiVelocity.y > 5.0f) {
         inputs.throttle *= spinoutMult;
         steerMult *= csMult;
         dbgInfo.oversteerCompensateThrottle = spinoutMult < 1.0f;
@@ -566,17 +577,17 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
 
     // Initial brake application
     float maxBrake = 0.0f;
-    // maxBrake = map(aiSpeed, distanceThrottle * gSettings.AIBrakePointDistanceThrottleMult, distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, -0.3f, 3.0f);
+    // maxBrake = map(aiSpeed, distanceThrottle * mCfg.BrakePointDistanceThrottleMult, distanceBrake * mCfg.BrakePointDistanceBrakeMult, -0.3f, 3.0f);
     // TODO: Expose 0.5f and 1.5f modifiers. Right more = more aggro/late brakey // 2.0 is also ok?
-    maxBrake = map(aiSpeed, 0.5f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 2.0f * distanceBrake * gSettings.AIBrakePointDistanceBrakeMult, 0.0f, 1.0f);
+    maxBrake = map(aiSpeed, 0.5f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 2.0f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 0.0f, 1.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
     //showText(0.1f, 0.00f, 0.5f, fmt("aiHeading: %.03f", aiHeading));
     //showText(0.1f, 0.05f, 0.5f, fmt("throttleBrakeHeading: %.03f", throttleBrakeHeading));
     //showText(0.1f, 0.10f, 0.5f, fmt("diffNodeHeading: %.03f", diffNodeHeading));
-    if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(gSettings.AIBrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
-        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(gSettings.AIBrakePointHeadingMinAngle), 0.0f, deg2rad(gSettings.AIBrakePointHeadingMaxAngle - gSettings.AIBrakePointHeadingMinAngle), 0.0f, 1.0f);
-        brakeDiffThrottleBrake *= std::clamp(map(aiSpeed, gSettings.AIBrakePointHeadingMinSpeed, gSettings.AIBrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
+    if (Distance(aiPosition, nextPositionThrottle) < lookAheadThrottle * 1.5f && abs(diffNodeHeading) - abs(actualAngle) > deg2rad(mCfg.BrakePointHeadingMinAngle) && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
+        brakeDiffThrottleBrake = map(abs(diffNodeHeading) - abs(actualAngle) - deg2rad(mCfg.BrakePointHeadingMinAngle), 0.0f, deg2rad(mCfg.BrakePointHeadingMaxAngle - mCfg.BrakePointHeadingMinAngle), 0.0f, 1.0f);
+        brakeDiffThrottleBrake *= std::clamp(map(aiSpeed, mCfg.BrakePointHeadingMinSpeed, mCfg.BrakePointHeadingMaxSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
             //dbgBrakeForHeading = true;
@@ -616,21 +627,21 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
             // Negative: Inside track. Positive: Outside track.
             float overshoot = Distance(predictedPos, trackClosestPred.v) - trackClosestPred.w;
 
-            if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && !inside &&
+            if (overshoot > mCfg.TrackLimitsAdjustMinOvershoot && !inside &&
                 /*smallestDistanceAI < turnTrackClosest.w * 1.5f &&*/ aiSpeed > 5.0f) {
                 dbgInfo.trackLimits = 1;
                 inputs.throttle *= std::clamp(
                     map(overshoot,
-                        gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
-                        gSettings.AITrackLimitsThrottleMultMinOvershoot, gSettings.AITrackLimitsThrottleMultMaxOvershoot)
+                        mCfg.TrackLimitsAdjustMinOvershoot, mCfg.TrackLimitsAdjustMaxOvershoot,
+                        mCfg.TrackLimitsThrottleMultMinOvershoot, mCfg.TrackLimitsThrottleMultMaxOvershoot)
                     , 0.0f, 1.0f
                 );
                 turnSteer *= map(overshoot,
-                    gSettings.AITrackLimitsAdjustMinOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot,
-                    gSettings.AITrackLimitsSteerMultMinOvershoot, gSettings.AITrackLimitsSteerMultMaxOvershoot);
-                if (overshoot > gSettings.AITrackLimitsAdjustMaxOvershoot) {
+                    mCfg.TrackLimitsAdjustMinOvershoot, mCfg.TrackLimitsAdjustMaxOvershoot,
+                    mCfg.TrackLimitsSteerMultMinOvershoot, mCfg.TrackLimitsSteerMultMaxOvershoot);
+                if (overshoot > mCfg.TrackLimitsAdjustMaxOvershoot) {
                     float overshootBrake = map(overshoot,
-                        gSettings.AITrackLimitsAdjustMaxOvershoot, gSettings.AITrackLimitsAdjustMaxOvershoot * 2.0f,
+                        mCfg.TrackLimitsAdjustMaxOvershoot, mCfg.TrackLimitsAdjustMaxOvershoot * 2.0f,
                         0.0f, 1.0f);
                     if (overshootBrake > maxBrake) {
                         maxBrake = overshootBrake;
@@ -639,12 +650,12 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
                     }
                 }
             }
-            if (overshoot > gSettings.AITrackLimitsAdjustMinOvershoot && inside && aiSpeed > 5.0f) {
+            if (overshoot > mCfg.TrackLimitsAdjustMinOvershoot && inside && aiSpeed > 5.0f) {
                 dbgInfo.trackLimits = 1;
                 turnSteer *=
                     std::clamp(
                         map(overshoot,
-                            0.0f, gSettings.AITrackLimitsAdjustMinOvershoot,
+                            0.0f, mCfg.TrackLimitsAdjustMinOvershoot,
                             1.0f, 0.0f)
                         , 0.0f, 1.0f);
             }
@@ -665,9 +676,9 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
 
     if (aiGnd && laGnd) {
         float drop = aiGndZ - laGndZ;
-        float dropDangerMult = map(drop, gSettings.AIElevationMin, gSettings.AIElevationMax, gSettings.AIElevationDangerMin, gSettings.AIElevationDangerMax);
+        float dropDangerMult = map(drop, mCfg.ElevationMin, mCfg.ElevationMax, mCfg.ElevationDangerMin, mCfg.ElevationDangerMax);
 
-        if (drop > gSettings.AIElevationDropThreshold) {
+        if (drop > mCfg.ElevationDropThreshold) {
             maxBrake *= dropDangerMult;
 
             showText(0.2f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
@@ -843,7 +854,7 @@ void Racer::updateAux() {
     headlightsOn |= std::find(headLightsOnWeathers.begin(), headLightsOnWeathers.end(), GAMEPLAY::GET_PREV_WEATHER_TYPE_HASH_NAME()) != headLightsOnWeathers.end();
     headlightsOn |= TIME::GET_CLOCK_HOURS() > 19 || TIME::GET_CLOCK_HOURS() < 6;
     VEHICLE::SET_VEHICLE_LIGHTS(mVehicle, headlightsOn ? 3 : 4);
-    if (gSettings.AIAutoRepair) {
+    if (mCfg.AutoRepair) {
         Fix();
     }
 }
@@ -1168,7 +1179,7 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     drawSphere(predictedPos, 0.25f, solidWhite);
 
     // Debug text
-    if (gSettings.AIShowDebugText) {
+    if (mCfg.ShowDebugText) {
         Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
         showDebugInfo3D(up2, 10.0f, {
             fmt("%s(P) %s(ESC) %s(ABS)", 
@@ -1177,7 +1188,7 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
                 dbgInfo.abs ? "~r~" : "~m~"),
             fmt("%sUnder ~m~| %sOver", 
                 dbgInfo.understeering ? "~r~" : "~m~", 
-                dbgInfo.oversteerAngle > gSettings.AIOversteerDetectionAngle ? "~r~" : "~m~"),
+                dbgInfo.oversteerAngle > mCfg.OversteerDetectionAngle ? "~r~" : "~m~"),
             fmt("%sTrack Limits %s", 
                 dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~", dbgInfo.trackLimitsInside ? "In" : "Out"),
             fmt("%sT: %03d%% ~m~| %sB: %03d%%", 

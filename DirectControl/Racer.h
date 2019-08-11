@@ -1,9 +1,12 @@
 #pragma once
-#include <vector>
-#include <inc/types.h>
 #include "Blip.h"
+#include "RacerConfig.h"
 #include "Track.h"
+
 #include "Util/Timer.h"
+
+#include <inc/types.h>
+#include <vector>
 
 /**
  * \brief                       The Racer class contains the racer decision-making and the output/input filters.
@@ -26,7 +29,7 @@ public:
      * \brief                   Convert a Vehicle to AI racer. Adds a blip and makes the vehicle persistent.
      * \param [in] vehicle      Vehicle to convert.
      */
-    explicit Racer(Vehicle vehicle);
+    explicit Racer(Vehicle vehicle, const std::string& cfgPath);
 
     /**
      * \brief                   Cleans up the resources.
@@ -34,6 +37,8 @@ public:
      *                          TODO: Crashes game on GTA exit, need hook for better cleanup.
      */
     ~Racer();
+
+    void UpdateConfig(const std::string& path);
 
     /**
      * \brief                   Sets the current track and sets closest node.
@@ -283,11 +288,15 @@ protected:
     void notify(const std::string& msg, bool alwaysShow);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
+    RacerConfig mCfg;               // Driving settings for this agent.
+    std::string mCfgPath;           // Yoot
+
     BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
-    bool mDead;                     // Stop processing when dead
-    int mNotifyHandle;
+    bool mDead;                     // Stop processing when dead.
+    int mNotifyHandle;              // Single notification handle for each agent.
+
 
     const Track* mTrack;            // Current track. Ptr since we don't want a copy per AI.
     size_t mTrackIdx;               // Last valid track index / checkpoint

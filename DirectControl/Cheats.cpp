@@ -126,7 +126,7 @@ void MakeAi(Vehicle vehicle, bool enableAi) {
                 }
             }
             if (!found) {
-                gRacers.push_back(std::make_unique<Racer>(vehicle));
+                gRacers.push_back(std::make_unique<Racer>(vehicle, ""));
                 gRacers.back()->SetTrack(Session::Get().GetTrack());
                 showNotification(fmt("Adding AI to ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
@@ -194,7 +194,7 @@ void AddAi(Vehicle vehicle, Ped playerPed) {
 
         Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
         Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
-        gRacers.push_back(std::make_unique<Racer>(spawnedVehicle));
+        gRacers.push_back(std::make_unique<Racer>(spawnedVehicle, ""));
         gRacers.back()->SetTrack(Session::Get().GetTrack());
     }
 }
