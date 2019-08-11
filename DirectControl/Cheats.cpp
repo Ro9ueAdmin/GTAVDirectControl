@@ -385,7 +385,7 @@ void LoadTrack() {
     }
 
     showNotification(fmt("~g~Track loaded\n"
-        "Distance: %.2f km", Session::Get().GetTrack().Length()));
+        "Distance: %.2f km", Session::Get().GetTrack().Length()/1000.0f));
 }
 
 void ReverseTrack() {
