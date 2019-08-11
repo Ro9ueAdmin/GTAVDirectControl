@@ -109,11 +109,18 @@ bool Racer::IsDead() {
 void Racer::Fix() {
     if (mDead)
         return;
-    VEHICLE::SET_VEHICLE_FIXED(mVehicle);
-    VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(mVehicle);
-    VEHICLE::SET_VEHICLE_BODY_HEALTH(mVehicle, 1000.0f);
-    VEHICLE::SET_VEHICLE_ENGINE_HEALTH(mVehicle, 1000.0f);
-    VEHICLE::SET_VEHICLE_PETROL_TANK_HEALTH(mVehicle, 1000.0f);
+
+    float bodyHealth = VEHICLE::GET_VEHICLE_BODY_HEALTH(mVehicle);
+    float engnHealth = VEHICLE::GET_VEHICLE_ENGINE_HEALTH(mVehicle);
+    float fuelHealth = VEHICLE::GET_VEHICLE_PETROL_TANK_HEALTH(mVehicle);
+
+    if (bodyHealth < 1000.0f || engnHealth < 1000.0f || fuelHealth < 1000.0f) {
+        VEHICLE::SET_VEHICLE_FIXED(mVehicle);
+        VEHICLE::SET_VEHICLE_DEFORMATION_FIXED(mVehicle);
+        VEHICLE::SET_VEHICLE_BODY_HEALTH(mVehicle, 1000.0f);
+        VEHICLE::SET_VEHICLE_ENGINE_HEALTH(mVehicle, 1000.0f);
+        VEHICLE::SET_VEHICLE_PETROL_TANK_HEALTH(mVehicle, 1000.0f);
+    }
 }
 
 bool Racer::GetActive() {
