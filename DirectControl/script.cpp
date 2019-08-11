@@ -167,7 +167,6 @@ void main() {
     gLogger.Write(INFO, "\"drawtrack\" to toggle track drawing");
     gLogger.Write(INFO, "");
 
-    gSettings.WriteDefaults("./DirectControl/defaults.ini");
     gSettings.ReadSettings("./DirectControl/settings.ini");
 
     gExt.initOffsets();

@@ -2,6 +2,18 @@
 #include "Util/Logger.hpp"
 #include <thirdparty/SimpleIni.h>
 #include <filesystem>
+#include <fstream>
+
+namespace {
+    const char* sectionGeneral = "General";
+    const char* sectionLookahead = "Lookahead";
+    const char* sectionSteering = "Steering";
+    const char* sectionBraking = "Braking";
+    const char* sectionElevation = "Elevation";
+    const char* sectionTrackLimits = "TrackLimits";
+    const char* sectionDebug = "Debug";
+    const std::string pathPrefix = "./DirectControl/RacerConfigs";
+}
 
 /**
  * These defaults are suitable for Killatomate's AWD sports vehicles, such as the
@@ -52,10 +64,9 @@ std::string toLower(std::string s) {
 }
 
 std::string getFullPath(const std::string& name) {
-    std::string pathPrefix = "./DirectControl/RacerConfigs"; // TODO: Move somewhere neat.
     std::string filename;
     for (auto& p : std::filesystem::directory_iterator(pathPrefix)) {
-        if (p.path().extension() == ".ini" && toLower(p.path().stem().string()).find(toLower(name)) != std::string::npos)
+        if (p.path().extension() == ".ini" && toLower(p.path().stem().string()) == toLower(name))
             filename = p.path().string();
     }
     return filename;
@@ -65,10 +76,12 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     std::string fullPath = getFullPath(name);
 
     if (fullPath.empty()) {
-        gLogger.Write(ERROR, "Error loading [%s], loading defaults", name.c_str());
+        gLogger.Write(ERROR, "[RacerConfig] Error loading [%s], loading defaults", name.c_str());
         fullPath = getFullPath("Default");
         if (fullPath.empty()) {
-            gLogger.Write(ERROR, "Error loading default config, loading hardcoded defaults", name.c_str());
+            gLogger.Write(ERROR, "              Error loading default config, loading hardcoded defaults", name.c_str());
+            RacerConfig defaultConfig{};
+            defaultConfig.Save("Default");
             return RacerConfig();
         }
     }
@@ -78,17 +91,9 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     SI_Error err = ini.LoadFile(fullPath.c_str());
 
     if (err != SI_OK) {
-        gLogger.Write(ERROR, "Error loading [%s], using defaults", fullPath.c_str());
+        gLogger.Write(ERROR, "[RacerConfig] Error loading [%s] (SimpleIni err [%d]), using defaults", fullPath.c_str(), err);
         return RacerConfig();
     }
-
-    const char* sectionGeneral = "General";
-    const char* sectionLookahead = "Lookahead";
-    const char* sectionSteering = "Steering";
-    const char* sectionBraking = "Braking";
-    const char* sectionElevation = "Elevation";
-    const char* sectionTrackLimits = "TrackLimits";
-    const char* sectionDebug = "Debug";
 
     RacerConfig cfg{};
 
@@ -144,4 +149,72 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     cfg.ShowDebugText = ini.GetBoolValue(sectionDebug, "ShowDebugText");
 
     return cfg;
+}
+
+void RacerConfig::Save(const std::string& name) {
+    std::string file = pathPrefix + "/" + name + ".ini";
+
+    std::ofstream fileStream(file, std::ofstream::out | std::ofstream::trunc);
+    fileStream << "; AI configuration file - saved by script";
+    fileStream.close();
+
+    CSimpleIniA ini;
+    ini.SetUnicode(true);
+    ini.LoadFile(file.c_str());
+
+    // General section
+    ini.SetBoolValue(sectionGeneral, "AutoRepair", AutoRepair);
+    ini.SetBoolValue(sectionGeneral, "DefaultActive", DefaultActive);
+
+    // Lookahead
+    ini.SetDoubleValue(sectionLookahead, "LookaheadThrottleSpeedMult", LookaheadThrottleSpeedMult);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadThrottleMinDistance", LookaheadThrottleMinDistance);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadBrakeSpeedMult", LookaheadBrakeSpeedMult);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadBrakeMinDistance", LookaheadBrakeMinDistance);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadSteerSpeedMult", LookaheadSteerSpeedMult);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadSteerMinDistance", LookaheadSteerMinDistance);
+
+    // Steering
+    ini.SetDoubleValue(sectionSteering, "SteerMult", SteerMult);
+    ini.SetDoubleValue(sectionSteering, "CountersteerIncreaseStartAngle", CountersteerIncreaseStartAngle);
+    ini.SetDoubleValue(sectionSteering, "CountersteerIncreaseEndAngle", CountersteerIncreaseEndAngle);
+    ini.SetDoubleValue(sectionSteering, "ThrottleDecreaseStartAngle", ThrottleDecreaseStartAngle);
+    ini.SetDoubleValue(sectionSteering, "ThrottleDecreaseEndAngle", ThrottleDecreaseEndAngle);
+    ini.SetDoubleValue(sectionSteering, "OversteerDetectionAngle", OversteerDetectionAngle);
+    ini.SetDoubleValue(sectionSteering, "UndersteerHandbrakeTrigger", UndersteerHandbrakeTrigger);
+
+    // Braking
+    ini.SetDoubleValue(sectionBraking, "BrakePointDistanceThrottleMult", BrakePointDistanceThrottleMult);
+    ini.SetDoubleValue(sectionBraking, "BrakePointDistanceBrakeMult", BrakePointDistanceBrakeMult);
+    ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMinAngle", BrakePointHeadingMinAngle);
+    ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMaxAngle", BrakePointHeadingMaxAngle);
+    ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMinSpeed", BrakePointHeadingMinSpeed);
+    ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMaxSpeed", BrakePointHeadingMaxSpeed);
+    ini.SetDoubleValue(sectionBraking, "BrakePointRadiusMaxSpeed", BrakePointRadiusMaxSpeed);
+    ini.SetDoubleValue(sectionBraking, "BrakePointRadiusMaxRadius", BrakePointRadiusMaxRadius);
+
+    // Elevation
+    ini.SetDoubleValue(sectionElevation, "ElevationDropThreshold", ElevationDropThreshold);
+    ini.SetDoubleValue(sectionElevation, "ElevationMin", ElevationMin);
+    ini.SetDoubleValue(sectionElevation, "ElevationMax", ElevationMax);
+    ini.SetDoubleValue(sectionElevation, "ElevationDangerMin", ElevationDangerMin);
+    ini.SetDoubleValue(sectionElevation, "ElevationDangerMax", ElevationDangerMax);
+    ini.SetDoubleValue(sectionElevation, "SteerLookAheadPitch", SteerLookAheadPitch);
+
+    // Track Limits
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsAdjustMinOvershoot", TrackLimitsAdjustMinOvershoot);
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsAdjustMaxOvershoot", TrackLimitsAdjustMaxOvershoot);
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsThrottleMultMinOvershoot", TrackLimitsThrottleMultMinOvershoot);
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsThrottleMultMaxOvershoot", TrackLimitsThrottleMultMaxOvershoot);
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsSteerMultMinOvershoot", TrackLimitsSteerMultMinOvershoot);
+    ini.SetDoubleValue(sectionTrackLimits, "TrackLimitsSteerMultMaxOvershoot", TrackLimitsSteerMultMaxOvershoot);
+
+    // Debug section
+    ini.SetBoolValue(sectionDebug, "ShowDebug", ShowDebug);
+    ini.SetBoolValue(sectionDebug, "ShowDebugText", ShowDebugText);
+
+    SI_Error err = ini.SaveFile(file.c_str());
+    if (err == SI_FAIL) {
+        gLogger.Write(ERROR, "[RacerConfig] Error saving [%s]", name.c_str());
+    }
 }

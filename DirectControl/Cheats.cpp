@@ -240,7 +240,6 @@ void DebugAiVis(bool show) {
 }
 
 void DebugAiTxtToggle() {
-    gSettings.AIShowDebugText = !gSettings.AIShowDebugText;
 }
 
 void DebugThis(Vehicle vehicle) {
