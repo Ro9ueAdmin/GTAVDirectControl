@@ -5,7 +5,7 @@ class RacerConfig {
 public:
     RacerConfig();
 
-    static RacerConfig Parse(const std::string& path);
+    static RacerConfig Parse(const std::string& name);
 
     // [General]
     bool DefaultActive;                       // to default spawn AI with AI active

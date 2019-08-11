@@ -39,7 +39,7 @@ size_t getPointsBetween(const std::vector<Point> & coords, size_t a, size_t b) {
 Racer::Racer(Vehicle vehicle, const std::string& cfgPath)
     : mVehicle(vehicle)
     , mCfg(RacerConfig::Parse(cfgPath))
-    , mCfgPath(cfgPath)
+    , mCfgName(cfgPath)
     , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
                                              VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
     , mActive(mCfg.DefaultActive)
@@ -85,12 +85,12 @@ Racer::~Racer() {
 
 void Racer::UpdateConfig(const std::string& path) {
     if (path.empty()) {
-        mCfg = RacerConfig::Parse(mCfgPath);
+        mCfg = RacerConfig::Parse(mCfgName);
         return;
     }
 
-    mCfgPath = path;
-    mCfg = RacerConfig::Parse(mCfgPath);
+    mCfgName = path;
+    mCfg = RacerConfig::Parse(mCfgName);
 }
 
 void Racer::SetTrack(const Track& t) {

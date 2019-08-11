@@ -1,6 +1,7 @@
 #include "RacerConfig.h"
 #include "Util/Logger.hpp"
 #include <thirdparty/SimpleIni.h>
+#include <filesystem>
 
 /**
  * These defaults are suitable for Killatomate's AWD sports vehicles, such as the
@@ -45,13 +46,39 @@ RacerConfig::RacerConfig()
     , ShowDebug(false)
     , ShowDebugText(false) { }
 
-RacerConfig RacerConfig::Parse(const std::string& path) {
+std::string toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    return s;
+}
+
+std::string getFullPath(const std::string& name) {
+    std::string pathPrefix = "./DirectControl/RacerConfigs"; // TODO: Move somewhere neat.
+    std::string filename;
+    for (auto& p : std::filesystem::directory_iterator(pathPrefix)) {
+        if (p.path().extension() == ".ini" && toLower(p.path().stem().string()).find(toLower(name)) != std::string::npos)
+            filename = p.path().string();
+    }
+    return filename;
+}
+
+RacerConfig RacerConfig::Parse(const std::string& name) {
+    std::string fullPath = getFullPath(name);
+
+    if (fullPath.empty()) {
+        gLogger.Write(ERROR, "Error loading [%s], loading defaults", name.c_str());
+        fullPath = getFullPath("Default");
+        if (fullPath.empty()) {
+            gLogger.Write(ERROR, "Error loading default config, loading hardcoded defaults", name.c_str());
+            return RacerConfig();
+        }
+    }
+
     CSimpleIniA ini;
     ini.SetUnicode(true);
-    SI_Error err = ini.LoadFile(path.c_str());
+    SI_Error err = ini.LoadFile(fullPath.c_str());
 
     if (err != SI_OK) {
-        gLogger.Write(ERROR, "Error loading [%s], using defaults", path.c_str());
+        gLogger.Write(ERROR, "Error loading [%s], using defaults", fullPath.c_str());
         return RacerConfig();
     }
 

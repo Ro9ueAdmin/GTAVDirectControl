@@ -16,7 +16,7 @@ bool Unloading() {
 }
 
 BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved) {
-    const char* logFile = "./DirectControl.log";
+    const char* logFile = "./DirectControl/DirectControl.log";
     gLogger.SetFile(logFile);
     gLogger.SetMinLevel(DEBUG);
 

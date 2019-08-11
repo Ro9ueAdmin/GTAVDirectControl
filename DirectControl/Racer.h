@@ -289,7 +289,7 @@ protected:
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
     RacerConfig mCfg;               // Driving settings for this agent.
-    std::string mCfgPath;           // Yoot
+    std::string mCfgName;           // Yoot
 
     BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.

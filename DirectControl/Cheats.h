@@ -14,6 +14,7 @@ namespace Cheats {
     void DebugAiVis(bool show);
     void DebugAiTxtToggle();
     void DebugThis(Vehicle vehicle);
+    void LoadConfig(Vehicle vehicle);
 
     void RecordTrack(Ped playerPed, bool start);
     void ClearTrack(Ped playerPed);

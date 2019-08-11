@@ -124,6 +124,7 @@ void UpdateCheats() {
     CheckCheat("dbgai1", Cheats::DebugAiVis, true);
     CheckCheat("dbgaitxt", Cheats::DebugAiTxtToggle);
     CheckCheat("dbgthis", Cheats::DebugThis, vehicle);
+    CheckCheat("loadconfig", Cheats::LoadConfig, vehicle);
 
     // playerPed used for coords
     CheckCheat("startrecord", Cheats::RecordTrack, playerPed, true);

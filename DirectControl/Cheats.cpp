@@ -212,7 +212,7 @@ void AddAi(Vehicle vehicle, Ped playerPed) {
 
         ENTITY::SET_ENTITY_LOAD_COLLISION_FLAG(spawnedVehicle, true);
 
-        gRacers.push_back(std::make_unique<Racer>(spawnedVehicle, ""));
+        gRacers.push_back(std::make_unique<Racer>(spawnedVehicle, racerModelName));
         gRacers.back()->SetTrack(Session::Get().GetTrack());
     }
 }
@@ -248,6 +248,19 @@ void DebugThis(Vehicle vehicle) {
         if (racer->GetVehicle() == vehicle) {
             showNotification("Toggle debug for current");
             racer->SetDebugView(!racer->GetDebugView());
+            break;
+        }
+    }
+}
+
+void LoadConfig(Vehicle vehicle) {
+    showNotification("Enter config to load (this vehicle only)");
+    GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 31);
+    std::string configName = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
+    for (auto& racer : gRacers) {
+        if (racer->GetVehicle() == vehicle) {
+            showNotification("Toggle debug for current");
+            racer->UpdateConfig(configName);
             break;
         }
     }
