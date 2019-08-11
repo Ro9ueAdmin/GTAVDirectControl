@@ -46,6 +46,14 @@ void UpdatePlayer() {
             Recorder::Get().Append(Point(myCoords, 5.0f));
         }
     }
+
+    if (PLAYER::IS_PLAYER_DEAD(PLAYER::GET_PLAYER_INDEX()) || 
+        PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::GET_PLAYER_INDEX(), false)) {
+        Cheats::StartAi(false);
+        if (gRecording) {
+            Cheats::RecordTrack(playerPed, false);
+        }
+    }
 }
 
 void DrawDebugTrack(const std::vector<Point>& trackCoords) {
