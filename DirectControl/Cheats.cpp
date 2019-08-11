@@ -401,6 +401,9 @@ void DebugTrack() {
 
 void ReloadSettings() {
     gSettings.ReadSettings("./DirectControl/settings.ini");
+    for (auto& racer : gRacers) {
+        racer->UpdateConfig("");
+    }
     showNotification("Reloaded settings");
 }
 

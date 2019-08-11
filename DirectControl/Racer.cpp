@@ -84,13 +84,13 @@ Racer::~Racer() {
     }
 }
 
-void Racer::UpdateConfig(const std::string& path) {
-    if (path.empty()) {
+void Racer::UpdateConfig(const std::string& name) {
+    if (name.empty()) {
         mCfg = RacerConfig::Parse(mCfgName);
         return;
     }
 
-    mCfgName = path;
+    mCfgName = name;
     mCfg = RacerConfig::Parse(mCfgName);
 }
 

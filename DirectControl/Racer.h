@@ -33,12 +33,15 @@ public:
 
     /**
      * \brief                   Cleans up the resources.
-     * 
-     *                          TODO: Crashes game on GTA exit, need hook for better cleanup.
      */
     ~Racer();
 
-    void UpdateConfig(const std::string& path);
+    /**
+     * \brief                   Load config from file.
+     * \param[in] name          Name of config file without extension.
+     *                          Empty reloads the current config file.
+     */
+    void UpdateConfig(const std::string& name);
 
     /**
      * \brief                   Sets the current track and sets closest node.
