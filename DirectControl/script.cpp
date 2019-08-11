@@ -122,7 +122,8 @@ void UpdateCheats() {
     
     CheckCheat("dbgai0", Cheats::DebugAiVis, false);
     CheckCheat("dbgai1", Cheats::DebugAiVis, true);
-    CheckCheat("dbgaitxt", Cheats::DebugAiTxtToggle);
+    CheckCheat("dbgtxt0", Cheats::DebugAiTxt, false);
+    CheckCheat("dbgtxt1", Cheats::DebugAiTxt, true);
     CheckCheat("dbgthis", Cheats::DebugThis, vehicle);
     CheckCheat("loadconfig", Cheats::LoadConfig, vehicle);
 

@@ -98,7 +98,8 @@ public:
      * \return                  Debug active status.
      */
     bool GetDebugView();
-protected:
+    void SetDebugText(bool value);
+   protected:
     /**
      * \brief                   Source of look-ahead point. Used in getCoord().
      */
@@ -294,6 +295,7 @@ protected:
     BlipX mBlip;                    // Blip attached to racer vehicle.
     bool mActive;                   // Active state.
     bool mDebugView;                // Debug information display state.
+    bool mDebugText;
     bool mDead;                     // Stop processing when dead.
     int mNotifyHandle;              // Single notification handle for each agent.
 

@@ -44,6 +44,7 @@ Racer::Racer(Vehicle vehicle, const std::string& cfgPath)
                                              VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
     , mActive(mCfg.DefaultActive)
     , mDebugView(mCfg.ShowDebug)
+    , mDebugText(mCfg.ShowDebugText)
     , mDead(false)
     , mNotifyHandle(0)
     , mTrack(nullptr)   // Set to with SetTrack after creation!
@@ -137,6 +138,10 @@ void Racer::SetDebugView(bool value) {
 
 bool Racer::GetDebugView() {
     return mDebugView;
+}
+
+void Racer::SetDebugText(bool value) {
+    mDebugText = value;
 }
 
 Vehicle Racer::findClosestVehicle(const std::vector<Vehicle> &vehicles, Vector3 position, float radius) {
@@ -1186,7 +1191,7 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     drawSphere(predictedPos, 0.25f, solidWhite);
 
     // Debug text
-    if (mCfg.ShowDebugText) {
+    if (mDebugText) {
         Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
         showDebugInfo3D(up2, 10.0f, {
             fmt("%s(P) %s(ESC) %s(ABS)", 

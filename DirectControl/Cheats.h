@@ -12,7 +12,7 @@ namespace Cheats {
     void FixAi();
     void DelAi();
     void DebugAiVis(bool show);
-    void DebugAiTxtToggle();
+    void DebugAiTxt(bool show);
     void DebugThis(Vehicle vehicle);
     void LoadConfig(Vehicle vehicle);
 

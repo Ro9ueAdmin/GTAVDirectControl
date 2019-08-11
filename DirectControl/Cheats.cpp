@@ -239,7 +239,10 @@ void DebugAiVis(bool show) {
     }
 }
 
-void DebugAiTxtToggle() {
+void DebugAiTxt(bool show) {
+    for (auto& racer : gRacers) {
+        racer->SetDebugText(show);
+    }
 }
 
 void DebugThis(Vehicle vehicle) {
@@ -312,7 +315,7 @@ void SaveTrack() {
 }
 
 void LoadTrack() {
-    std::string path = "./DirectControl";
+    std::string path = "./DirectControl/Tracks";
     for (auto& p : std::filesystem::directory_iterator(path)) {
         if (p.path().extension() == ".json" || p.path().extension() == ".xml")
             showNotification(fmt("Track: ~b~%s", p.path().stem().string().c_str()));
