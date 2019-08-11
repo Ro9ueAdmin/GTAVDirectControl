@@ -420,11 +420,11 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     return {};
 }
 
-float Racer::avgCenterDiff(const std::vector<Point>& coords, uint32_t idx) {
+float Racer::avgCenterDiff(const std::vector<Point>& coords, uint64_t idx) {
     float diff = 0.0f;
     Vector3 a = coords[(idx + 0) % coords.size()].v;
     Vector3 b = coords[(idx + 1) % coords.size()].v;
-    for (uint32_t i = 2; i < 10; ++i) {
+    for (uint64_t i = 2; i < 10; ++i) {
         Vector3 c = coords[(idx + i) % coords.size()].v;
 
         Vector3 cwA = GetPerpendicular(a, b, coords[idx].w, true);
@@ -481,9 +481,9 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, mCfg.LookaheadBrakeMinDistance,          9999.0f);
     float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, mCfg.LookaheadSteerMinDistance,          9999.0f);
 
-    uint32_t throttleIdx;
-    uint32_t brakeIdx;
-    uint32_t steerIdx;
+    uint64_t throttleIdx;
+    uint64_t brakeIdx;
+    uint64_t steerIdx;
 
     Vector3 nextPositionThrottle = getCoord(coords, lookAheadThrottle, actualAngle, dbgInfo.laSrcThrottle, throttleIdx);
     Vector3 nextPositionBrake = getCoord(coords, lookAheadBrake, actualAngle, dbgInfo.laSrcBrake, brakeIdx);
@@ -618,9 +618,9 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     {
 
         Vector3 predictedPos = (nextPositionVelocity + turnWorld) * 0.5f;
-        uint32_t idx = static_cast<uint32_t>(coords.size());
+        uint64_t idx = coords.size();
         Point trackClosestPred = getTrackCoordNearCoord(coords, predictedPos, idx);
-        uint32_t x;
+        uint64_t x;
         auto trackClosestAi = getTrackCoordNearCoord(coords, aiPosition, x);
         if (Distance(aiPosition, trackClosestAi.v) < trackClosestAi.w * 2.0f) {
 
@@ -983,16 +983,16 @@ Vehicle Racer::GetVehicle() {
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
                         float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source) {
-    uint32_t discard;
+    uint64_t discard;
     return getCoord(coords, lookAheadDistance, actualAngle, source, discard);
 }
 
-Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 findCoord, uint32_t& outIndex) {
+Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 findCoord, uint64_t& outIndex) {
     outIndex = static_cast<uint32_t>(trackCoords.size()); // return trackCoords.end() basically
 
     float smallestDistance = 10000.0f;
     Point closestPoint{};
-    for (uint32_t i = 0; i < trackCoords.size(); ++i) {
+    for (size_t i = 0u; i < trackCoords.size(); ++i) {
         const Point& point = trackCoords[i];
         Vector3 trackCoord = point.v;
         float distance = Distance(findCoord, trackCoord);
@@ -1006,7 +1006,7 @@ Point Racer::getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vecto
 }
 
 Vector3 Racer::getCoord(const std::vector<Point> &coords,
-                        float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source, uint32_t& index) {
+                        float lookAheadDistance, float actualAngle, Racer::LookAheadSource& source, uint64_t& index) {
     float smallestToLa = 9999.9f;
     size_t smallestToLaIdx = mTrackIdx;
     float smallestToAi = 9999.9f;

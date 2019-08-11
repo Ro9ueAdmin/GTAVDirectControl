@@ -177,9 +177,9 @@ public:
      * \return                          Chosen coordinate from the list.
      */
     Vector3 getCoord(const std::vector<Point>& coords, float lookAheadDistance, float actualAngle, LookAheadSource& source);
-    Point getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 coord, uint32_t& outIndex);
+    Point getTrackCoordNearCoord(const std::vector<Point>& trackCoords, Vector3 coord, uint64_t& outIndex);
     Vector3 getCoord(const std::vector<Point> &coords, float lookAheadDistance,
-                     float actualAngle, LookAheadSource& source, uint32_t& index);
+                     float actualAngle, LookAheadSource& source, uint64_t& index);
 
     /**
      * \brief                   Calculate average angle of the steered wheels.
@@ -273,7 +273,7 @@ public:
      * \param [in] idx          Index to calculate "apex" of
      * \return                  Distance from center towards that perceived apex
      */
-    float avgCenterDiff(const std::vector<Point>& coords, uint32_t idx);
+    float avgCenterDiff(const std::vector<Point>& coords, uint64_t idx);
 
     /**
      * \brief                   Teleport to node on track closest to AI.
