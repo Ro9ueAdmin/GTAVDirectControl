@@ -315,7 +315,7 @@ void SaveTrack() {
 }
 
 void LoadTrack() {
-    std::string path = "./DirectControl/Tracks";
+    std::string path = "./DirectControl/Tracks/";
     for (auto& p : std::filesystem::directory_iterator(path)) {
         if (p.path().extension() == ".json" || p.path().extension() == ".xml")
             showNotification(fmt("Track: ~b~%s", p.path().stem().string().c_str()));
@@ -330,9 +330,9 @@ void LoadTrack() {
     std::string loadFile = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
 
     json j;
-    std::ifstream i("./DirectControl/" + loadFile + ".json");
+    std::ifstream i(path + loadFile + ".json");
     if (!i.is_open()) {
-        i.open("./DirectControl/" + loadFile + ".xml");
+        i.open(path + loadFile + ".xml");
         if (!i.is_open()) {
             showNotification("Couldn't find file");
             return;
