@@ -308,7 +308,7 @@ void SaveTrack() {
             { "Wide", coords[idx].w },
             });
     }
-    std::ofstream o("./DirectControl/" + saveFile + ".json");
+    std::ofstream o("./DirectControl/Tracks/" + saveFile + ".json");
     o << std::setw(4) << j << std::endl;
 
     showNotification("~g~Track saved");
