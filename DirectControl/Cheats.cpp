@@ -127,6 +127,15 @@ void MakeAi(Vehicle vehicle, bool enableAi) {
             }
             if (!found) {
                 gRacers.push_back(std::make_unique<Racer>(vehicle, ""));
+
+                Ped spawnedPed = PED::CREATE_RANDOM_PED_AS_DRIVER(vehicle, true);
+                PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(spawnedPed, true);
+                PED::SET_PED_KEEP_TASK(spawnedPed, true);
+                PED::SET_DRIVER_ABILITY(spawnedPed, 1.0f);
+                PED::SET_DRIVER_AGGRESSIVENESS(spawnedPed, 100.0f);
+
+                ENTITY::SET_ENTITY_LOAD_COLLISION_FLAG(vehicle, true);
+
                 gRacers.back()->SetTrack(Session::Get().GetTrack());
                 showNotification(fmt("Adding AI to ~b~%s", VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle)));
             }
@@ -194,6 +203,15 @@ void AddAi(Vehicle vehicle, Ped playerPed) {
 
         Vector3 spawnPos = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, offsetX, 0.0, 0);
         Vehicle spawnedVehicle = spawnVehicle(model, spawnPos, ENTITY::GET_ENTITY_HEADING(playerPed), 1000, true);
+
+        Ped spawnedPed = PED::CREATE_RANDOM_PED_AS_DRIVER(spawnedVehicle, true);
+        PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(spawnedPed, true);
+        PED::SET_PED_KEEP_TASK(spawnedPed, true);
+        PED::SET_DRIVER_ABILITY(spawnedPed, 1.0f);
+        PED::SET_DRIVER_AGGRESSIVENESS(spawnedPed, 100.0f);
+
+        ENTITY::SET_ENTITY_LOAD_COLLISION_FLAG(spawnedVehicle, true);
+
         gRacers.push_back(std::make_unique<Racer>(spawnedVehicle, ""));
         gRacers.back()->SetTrack(Session::Get().GetTrack());
     }
