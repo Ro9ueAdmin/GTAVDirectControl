@@ -91,12 +91,19 @@ void UpdateAI(){
 
     auto& track = Session::Get().GetTrack();
     auto& trackCoords = track.Points();
+    Track recordTrack{};
+    if (gRecording)
+        recordTrack = Recorder::Get().GetTrack();
+
     for (auto& racer : gRacers) {
+        if (gRecording) {
+            racer->SetTrack(recordTrack);
+        }
         racer->UpdateControl(npcs);
     }    
 
     if (gRecording) {
-        DrawDebugTrack(Recorder::Get().Points());
+        DrawDebugTrack(recordTrack.Points());
     }
     else if (gSettings.TrackShowDebug) {
         DrawDebugTrack(trackCoords);

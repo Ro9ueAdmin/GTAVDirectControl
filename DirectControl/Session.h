@@ -48,6 +48,10 @@ public:
     const std::vector<Point>& Points() {
         return mRecordPoints;
     }
+
+    Track GetTrack() {
+        return Track("", mRecordPoints);
+    }
 private:
     Recorder() = default;
     std::vector<Point> mRecordPoints;

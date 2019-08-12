@@ -130,6 +130,7 @@ bool Racer::GetActive() {
 
 void Racer::SetActive(bool value) {
     mActive = value;
+    findClosestNode(mTrackIdx);
 }
 
 void Racer::SetDebugView(bool value) {
