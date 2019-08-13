@@ -694,10 +694,10 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
         if (drop > mCfg.ElevationDropThreshold) {
             maxBrake *= dropDangerMult;
 
-            showText(0.2f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
-            showText(0.2f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
-            //showText(2.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
-            showText(0.2f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
+            //showText(0.2f, 0.000f, 0.5f, fmt("~r~%.03f m drop", drop));
+            //showText(0.2f, 0.025f, 0.5f, fmt("~r~%.03f dropDangerMult", dropDangerMult));
+            ////showText(2.0f, 0.050f, 0.5f, fmt("~r~Accel: %.03f", throttle));
+            //showText(0.2f, 0.075f, 0.5f, fmt("~r~Brake: %.03f", maxBrake));
         }
     }
 
