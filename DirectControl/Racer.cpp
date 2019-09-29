@@ -1120,32 +1120,30 @@ float Racer::calculateReduction() {
 
 float Racer::calculateDesiredHeading(float steeringMax, float desiredHeading,
                                      float reduction) {
-    float correction = desiredHeading * reduction;
+    // Scale input with both reduction and steering limit
+    desiredHeading = desiredHeading * reduction * steeringMax;
+    float correction = desiredHeading;
 
-    if (abs(ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y) > 3.0f) {
-        Vector3 positionWorld = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
-        Vector3 travelWorld = positionWorld + ENTITY::GET_ENTITY_VELOCITY(mVehicle);
-
-        Vector3 target = Normalize(
-            ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, travelWorld.x, travelWorld.y, travelWorld.z));
-        float travelDir = atan2(target.y, target.x) - M_PI / 2.0f;
-        if (travelDir > M_PI / 2.0f) {
-            travelDir -= M_PI;
+    Vector3 speedVector = ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true);
+    if (abs(speedVector.y) > 3.0f) {
+        Vector3 target = Normalize(speedVector);
+        float travelDir = atan2(target.y, target.x) - static_cast<float>(M_PI) / 2.0f;
+        if (travelDir > static_cast<float>(M_PI) / 2.0f) {
+            travelDir -= static_cast<float>(M_PI);
         }
-        if (travelDir < -M_PI / 2.0f) {
-            travelDir += M_PI;
+        if (travelDir < -static_cast<float>(M_PI) / 2.0f) {
+            travelDir += static_cast<float>(M_PI);
         }
-        travelDir *= sgn(ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y);
-        travelDir += desiredHeading * reduction;
+        // Correct for reverse
+        travelDir *= sgn(speedVector.y);
 
-        correction = atan2(sin(travelDir), cos(travelDir));
+        // clamp auto correction to countersteer limit
+        travelDir = std::clamp(travelDir, deg2rad(-15.0f), deg2rad(15.0f));
+
+        correction = travelDir + desiredHeading;
     }
-    if (correction > steeringMax)
-        correction = steeringMax;
-    if (correction < -steeringMax)
-        correction = -steeringMax;
 
-    return correction;
+    return std::clamp(correction, -steeringMax, steeringMax);
 }
 
 void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugInfo& dbgInfo) {
