@@ -3,8 +3,8 @@
 #include <vector>
 
 template <typename T>
-constexpr int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
+T sgn(T val) {
+    return static_cast<T>((T{} < val) - (val < T{}));
 }
 
 template<typename T, typename A>
