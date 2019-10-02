@@ -73,9 +73,10 @@ Racer::~Racer() {
         if (ENTITY::DOES_ENTITY_EXIST(mVehicle)) {
             Ped driver = VEHICLE::GET_PED_IN_VEHICLE_SEAT(mVehicle, -1);
             if (driver != PLAYER::PLAYER_PED_ID() && ENTITY::DOES_ENTITY_EXIST(driver)) {
-                PED::DELETE_PED(&driver);
+                ENTITY::SET_ENTITY_AS_MISSION_ENTITY(driver, false, true);
+                ENTITY::DELETE_ENTITY(&driver);
             }
-
+            
             gExt.SetThrottleP(mVehicle, 0.0f);
             gExt.SetBrakeP(mVehicle, 1.0f);
             gExt.SetSteeringAngle(mVehicle, 0.0f);

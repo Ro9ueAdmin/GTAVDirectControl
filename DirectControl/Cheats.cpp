@@ -85,6 +85,11 @@ void Passenger(Vehicle vehicle, Ped playerPed) {
             }
             else {
                 showNotification("Player to Driver seat");
+                Ped driver = VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1);
+                if (ENTITY::DOES_ENTITY_EXIST(driver)) {
+                    ENTITY::SET_ENTITY_AS_MISSION_ENTITY(driver, false, true);
+                    ENTITY::DELETE_ENTITY(&driver);
+                }
                 PED::SET_PED_INTO_VEHICLE(playerPed, vehicle, -1);
             }
         }
