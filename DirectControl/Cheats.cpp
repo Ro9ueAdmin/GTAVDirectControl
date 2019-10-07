@@ -263,6 +263,11 @@ void DebugThis(Vehicle vehicle) {
 void LoadConfig(Vehicle vehicle) {
     showNotification("Enter config to load (this vehicle only)");
     GAMEPLAY::DISPLAY_ONSCREEN_KEYBOARD(0, "FMMC_KEY_TIP8", "", "", "", "", "", 31);
+    while (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0) WAIT(0);
+    if (!GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT()) {
+        showNotification("Cancelled cfg load");
+        return;
+    }
     std::string configName = GAMEPLAY::GET_ONSCREEN_KEYBOARD_RESULT();
     for (auto& racer : gRacers) {
         if (racer->GetVehicle() == vehicle) {
