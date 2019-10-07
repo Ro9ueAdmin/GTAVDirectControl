@@ -131,7 +131,9 @@ void MakeAi(Vehicle vehicle, bool enableAi) {
                 }
             }
             if (!found) {
-                gRacers.push_back(std::make_unique<Racer>(vehicle, ""));
+                std::string gameName = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(vehicle);
+
+                gRacers.push_back(std::make_unique<Racer>(vehicle, gameName));
 
                 Ped spawnedPed = PED::CREATE_RANDOM_PED_AS_DRIVER(vehicle, true);
                 PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(spawnedPed, true);
