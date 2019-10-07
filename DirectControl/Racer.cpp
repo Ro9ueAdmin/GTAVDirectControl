@@ -907,6 +907,7 @@ void Racer::teleportToLastNode() {
     ENTITY::SET_ENTITY_COORDS(mVehicle, lastPoint.v.x, lastPoint.v.y, lastPoint.v.z, 0, 0, 0, 0);
     ENTITY::SET_ENTITY_HEADING(mVehicle, heading);
     VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(mVehicle);
+    VEHICLE::SET_VEHICLE_FORWARD_SPEED(mVehicle, 10.0f);
 }
 
 void Racer::updateStuck() {
