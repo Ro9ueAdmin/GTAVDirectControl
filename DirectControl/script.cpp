@@ -116,6 +116,8 @@ void UpdateCheats() {
 
     CheckCheat("cc", Cheats::ControlCar, vehicle);
     CheckCheat("pp", Cheats::Passenger, vehicle, playerPed);
+    CheckCheat("ep", Cheats::EnterPassenger, playerPed);
+
     CheckCheat("dbgp", Cheats::DebugPlayer);
 
     CheckCheat("makeai0", Cheats::MakeAi, vehicle, false);

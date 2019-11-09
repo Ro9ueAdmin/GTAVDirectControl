@@ -4,6 +4,7 @@
 namespace Cheats {
     void ControlCar(Vehicle vehicle);
     void Passenger(Vehicle vehicle, Ped playerPed);
+    void EnterPassenger(Ped playerPed);
     void DebugPlayer();
 
     void MakeAi(Vehicle vehicle, bool enableAi);

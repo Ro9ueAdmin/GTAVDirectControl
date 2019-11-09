@@ -28,6 +28,7 @@ extern bool gRecording;
 extern std::vector<std::unique_ptr<Racer>> gRacers;
 extern std::unique_ptr<PlayerRacer> gPlayerRacer;
 
+namespace {
 Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bool managed) {
     if (!(STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash))) {
         // Vehicle doesn't exist
@@ -57,6 +58,23 @@ Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bo
         ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&veh);
     }
     return copy;
+}
+
+Vehicle findClosestVehicle(Vector3 p, float d) {
+    std::vector<Vehicle> vehicles(1024);
+    auto numFound = worldGetAllVehicles(vehicles.data(), 1024);
+    vehicles.resize(numFound);
+    float closestDistance = 1e6f;
+    Vehicle closestVehicle = 0;
+    for (auto vehicle : vehicles) {
+        float distance = Distance(ENTITY::GET_ENTITY_COORDS(vehicle, true), p);
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestVehicle = vehicle;
+        }
+    }
+    return closestVehicle;
+}
 }
 
 namespace Cheats {
@@ -96,6 +114,15 @@ void Passenger(Vehicle vehicle, Ped playerPed) {
         else {
             showNotification("Vehicle has only one seat");
         }
+    }
+}
+
+void EnterPassenger(Ped playerPed) {
+    Vector3 myCoords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
+
+    Vehicle v = findClosestVehicle(myCoords, 5.0f);
+    if (ENTITY::DOES_ENTITY_EXIST(v)) {
+        AI::TASK_ENTER_VEHICLE(playerPed, v, 5000, 0, 2.0f, 0, 0);
     }
 }
 
