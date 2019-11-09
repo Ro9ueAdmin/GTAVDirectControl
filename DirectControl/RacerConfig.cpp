@@ -1,6 +1,6 @@
 #include "RacerConfig.h"
 #include "Util/Logger.hpp"
-#include <thirdparty/SimpleIni.h>
+#include "SimpleIni.h"
 #include <filesystem>
 #include <fstream>
 
