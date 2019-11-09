@@ -1,6 +1,6 @@
 #include "Settings.h"
 #include <fstream>
-#include <thirdparty/SimpleIni.h>
+#include "SimpleIni.h"
 #include "Util/Logger.hpp"
 #pragma warning( disable : 4244 )
 

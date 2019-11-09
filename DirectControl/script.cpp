@@ -1,7 +1,7 @@
 #include "script.h"
 
 #include <filesystem>
-#include <thirdparty/json.hpp>
+#include "json.hpp"
 
 #include "Memory/VehicleExtensions.hpp"
 #include "XInputControl.h"

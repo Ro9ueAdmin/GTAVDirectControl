@@ -7,7 +7,7 @@ http://dev-c.com
 #include "..\..\ScriptHookV_SDK\inc\main.h"
 #include "script.h"
 #include "Util/Logger.hpp"
-#include <Memory/Versions.h>
+#include "Memory/Versions.h"
 
 bool unloading = false;
 

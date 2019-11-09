@@ -3,7 +3,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include <inc/natives.h>
+#include "inc/natives.h"
 #include "Util/StringFormat.h"
 #include "Util/MathExt.h"
 #include "Util/Color.h"

@@ -8,12 +8,12 @@
 #include "Util/StringFormat.h"
 #include "Util/UIUtils.h"
 
-#include <thirdparty/json.hpp>
+#include "json.hpp"
 
 #pragma warning( push )  
 #pragma warning( disable : 4244 )
 #pragma warning( disable : 4996 )
-#include <thirdparty/xml2json.hpp>
+#include "xml2json.hpp"
 #pragma warning( pop )
 
 #include <iomanip>
