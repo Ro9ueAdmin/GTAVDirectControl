@@ -42,8 +42,6 @@ RacerConfig::RacerConfig()
     , BrakePointHeadingMaxAngle(52.5f)
     , BrakePointHeadingMinSpeed(10.0f)
     , BrakePointHeadingMaxSpeed(40.0f)
-    , BrakePointRadiusMaxSpeed(100.0f)
-    , BrakePointRadiusMaxRadius(1000.0f)
     , ElevationDropThreshold(0.5f)
     , ElevationMin(0.0f)
     , ElevationMax(1.75f)
@@ -125,8 +123,6 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     cfg.BrakePointHeadingMaxAngle =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMaxAngle");
     cfg.BrakePointHeadingMinSpeed =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMinSpeed");
     cfg.BrakePointHeadingMaxSpeed =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMaxSpeed");
-    cfg.BrakePointRadiusMaxSpeed =        ini.GetDoubleValue(sectionBraking, "BrakePointRadiusMaxSpeed");
-    cfg.BrakePointRadiusMaxRadius =       ini.GetDoubleValue(sectionBraking, "BrakePointRadiusMaxRadius");
 
     // Elevation
     cfg.ElevationDropThreshold =          ini.GetDoubleValue(sectionElevation, "ElevationDropThreshold");
@@ -190,8 +186,6 @@ void RacerConfig::Save(const std::string& name) {
     ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMaxAngle", BrakePointHeadingMaxAngle);
     ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMinSpeed", BrakePointHeadingMinSpeed);
     ini.SetDoubleValue(sectionBraking, "BrakePointHeadingMaxSpeed", BrakePointHeadingMaxSpeed);
-    ini.SetDoubleValue(sectionBraking, "BrakePointRadiusMaxSpeed", BrakePointRadiusMaxSpeed);
-    ini.SetDoubleValue(sectionBraking, "BrakePointRadiusMaxRadius", BrakePointRadiusMaxRadius);
 
     // Elevation
     ini.SetDoubleValue(sectionElevation, "ElevationDropThreshold", ElevationDropThreshold);

@@ -43,9 +43,6 @@ public:
     float BrakePointHeadingMinSpeed;          // Speed for upcoming angle to start braking 
     float BrakePointHeadingMaxSpeed;          // Speed for upcoming angle for max braking
 
-    float BrakePointRadiusMaxSpeed;           // Speed radius is considered for
-    float BrakePointRadiusMaxRadius;          // Considered radius at max speed
-
     // [Elevation]
     float ElevationDropThreshold;
     float ElevationMin;
