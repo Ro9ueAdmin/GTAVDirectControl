@@ -98,6 +98,8 @@ void Racer::UpdateConfig(const std::string& name) {
 
     mCfgName = name;
     mCfg = RacerConfig::Parse(mCfgName);
+    mDebugView = mCfg.ShowDebug;
+    mDebugText = mCfg.ShowDebugText;
 }
 
 void Racer::SetTrack(const Track& t) {
@@ -598,6 +600,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
     float maxBrake = 0.0f;
     // maxBrake = map(aiSpeed, distanceThrottle * mCfg.BrakePointDistanceThrottleMult, distanceBrake * mCfg.BrakePointDistanceBrakeMult, -0.3f, 3.0f);
     // TODO: Expose 0.5f and 1.5f modifiers. Right more = more aggro/late brakey // 2.0 is also ok?
+    // TODO: aiSpeed -> exponential?
     maxBrake = map(aiSpeed, 0.5f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 2.0f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 0.0f, 1.0f);
 
     float brakeDiffThrottleBrake = 0.0f;
