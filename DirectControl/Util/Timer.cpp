@@ -1,10 +1,12 @@
 #include "Timer.h"
-#include <chrono>
+#include "inc/natives.h"
 
 inline auto now() {
-    using namespace std::chrono;
-    auto tEpoch = steady_clock::now().time_since_epoch();
-    return duration_cast<milliseconds>(tEpoch).count();
+    //using namespace std::chrono;
+    //auto tEpoch = steady_clock::now().time_since_epoch();
+    //return duration_cast<milliseconds>(tEpoch).count();
+    //
+    return GAMEPLAY::GET_GAME_TIMER();
 }
 
 Timer::Timer(int64_t timeout) :
