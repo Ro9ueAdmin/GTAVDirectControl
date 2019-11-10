@@ -15,10 +15,13 @@ public:
     // [Lookahead]
     float LookaheadThrottleSpeedMult;         // m/s meters lookahead multiplier
     float LookaheadThrottleMinDistance;       // minimal lookahead distance
+    float LookaheadThrottleMaxDistance;       // maximal lookahead distance
     float LookaheadBrakeSpeedMult;            // m/s meters lookahead multiplier
     float LookaheadBrakeMinDistance;          // minimal lookahead distance
+    float LookaheadBrakeMaxDistance;          // maximal lookahead distance
     float LookaheadSteerSpeedMult;            // m/s meters lookahead multiplier
     float LookaheadSteerMinDistance;          // minimal lookahead distance
+    float LookaheadSteerMaxDistance;          // maximal lookahead distance
 
     // [Steering]
     float SteerMult;                          // default steering input multiplier
@@ -42,6 +45,14 @@ public:
     float BrakePointHeadingMaxAngle;          // Upcoming angle braking is max at
     float BrakePointHeadingMinSpeed;          // Speed for upcoming angle to start braking 
     float BrakePointHeadingMaxSpeed;          // Speed for upcoming angle for max braking
+
+    float BrakePointSpeedMultMin; // fuck me
+    float BrakePointSpeedMultMax; // fuck me
+
+    float RadiusActivationMult;
+    float LateralOffsetMin;
+    float LateralOffsetMax;
+    float LateralScaleSpeed;
 
     // [Elevation]
     float ElevationDropThreshold;

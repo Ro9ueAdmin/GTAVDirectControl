@@ -24,10 +24,13 @@ RacerConfig::RacerConfig()
     , AutoRepair(true)
     , LookaheadThrottleSpeedMult(3.5f)
     , LookaheadThrottleMinDistance(25.0f)
+    , LookaheadThrottleMaxDistance(150.0f)
     , LookaheadBrakeSpeedMult(2.5f)
     , LookaheadBrakeMinDistance(20.0f)
+    , LookaheadBrakeMaxDistance(75.0f)
     , LookaheadSteerSpeedMult(1.0f)
     , LookaheadSteerMinDistance(15.0f)
+    , LookaheadSteerMaxDistance(35.0f)
     , SteerMult(2.0f)
     , CountersteerIncreaseStartAngle(5.0f)
     , CountersteerIncreaseEndAngle(45.0f)
@@ -42,6 +45,9 @@ RacerConfig::RacerConfig()
     , BrakePointHeadingMaxAngle(52.5f)
     , BrakePointHeadingMinSpeed(10.0f)
     , BrakePointHeadingMaxSpeed(40.0f)
+    , BrakePointSpeedMultMin(0.375f)
+    , BrakePointSpeedMultMax(3.500f)
+    , RadiusActivationMult(0.85f)
     , ElevationDropThreshold(0.5f)
     , ElevationMin(0.0f)
     , ElevationMax(1.75f)
@@ -102,10 +108,15 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     // Lookahead
     cfg.LookaheadThrottleSpeedMult =      ini.GetDoubleValue(sectionLookahead, "LookaheadThrottleSpeedMult");
     cfg.LookaheadThrottleMinDistance =    ini.GetDoubleValue(sectionLookahead, "LookaheadThrottleMinDistance");
+    cfg.LookaheadThrottleMaxDistance =    ini.GetDoubleValue(sectionLookahead, "LookaheadThrottleMaxDistance");
+
     cfg.LookaheadBrakeSpeedMult =         ini.GetDoubleValue(sectionLookahead, "LookaheadBrakeSpeedMult");
     cfg.LookaheadBrakeMinDistance =       ini.GetDoubleValue(sectionLookahead, "LookaheadBrakeMinDistance");
+    cfg.LookaheadBrakeMaxDistance =       ini.GetDoubleValue(sectionLookahead, "LookaheadBrakeMaxDistance");
+
     cfg.LookaheadSteerSpeedMult =         ini.GetDoubleValue(sectionLookahead, "LookaheadSteerSpeedMult");
     cfg.LookaheadSteerMinDistance =       ini.GetDoubleValue(sectionLookahead, "LookaheadSteerMinDistance");
+    cfg.LookaheadSteerMaxDistance =       ini.GetDoubleValue(sectionLookahead, "LookaheadSteerMaxDistance");
 
     // Steering
     cfg.SteerMult =                       ini.GetDoubleValue(sectionSteering, "SteerMult");
@@ -123,6 +134,14 @@ RacerConfig RacerConfig::Parse(const std::string& name) {
     cfg.BrakePointHeadingMaxAngle =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMaxAngle");
     cfg.BrakePointHeadingMinSpeed =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMinSpeed");
     cfg.BrakePointHeadingMaxSpeed =       ini.GetDoubleValue(sectionBraking, "BrakePointHeadingMaxSpeed");
+
+    cfg.BrakePointSpeedMultMin = ini.GetDoubleValue(sectionBraking, "BrakePointSpeedMultMin");
+    cfg.BrakePointSpeedMultMax = ini.GetDoubleValue(sectionBraking, "BrakePointSpeedMultMax");
+
+    cfg.RadiusActivationMult = ini.GetDoubleValue(sectionBraking, "RadiusActivationMult");
+    cfg.LateralOffsetMin = ini.GetDoubleValue(sectionBraking, "LateralOffsetMin");
+    cfg.LateralOffsetMax = ini.GetDoubleValue(sectionBraking, "LateralOffsetMax");
+    cfg.LateralScaleSpeed = ini.GetDoubleValue(sectionBraking, "LateralScaleSpeed");
 
     // Elevation
     cfg.ElevationDropThreshold =          ini.GetDoubleValue(sectionElevation, "ElevationDropThreshold");
@@ -165,10 +184,15 @@ void RacerConfig::Save(const std::string& name) {
     // Lookahead
     ini.SetDoubleValue(sectionLookahead, "LookaheadThrottleSpeedMult", LookaheadThrottleSpeedMult);
     ini.SetDoubleValue(sectionLookahead, "LookaheadThrottleMinDistance", LookaheadThrottleMinDistance);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadThrottleMaxDistance", LookaheadThrottleMaxDistance);
+
     ini.SetDoubleValue(sectionLookahead, "LookaheadBrakeSpeedMult", LookaheadBrakeSpeedMult);
     ini.SetDoubleValue(sectionLookahead, "LookaheadBrakeMinDistance", LookaheadBrakeMinDistance);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadBrakeMaxDistance", LookaheadBrakeMaxDistance);
+
     ini.SetDoubleValue(sectionLookahead, "LookaheadSteerSpeedMult", LookaheadSteerSpeedMult);
     ini.SetDoubleValue(sectionLookahead, "LookaheadSteerMinDistance", LookaheadSteerMinDistance);
+    ini.SetDoubleValue(sectionLookahead, "LookaheadSteerMaxDistance", LookaheadSteerMaxDistance);
 
     // Steering
     ini.SetDoubleValue(sectionSteering, "SteerMult", SteerMult);
