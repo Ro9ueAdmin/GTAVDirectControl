@@ -36,6 +36,57 @@ size_t getPointsBetween(const std::vector<Point> & coords, size_t a, size_t b) {
     return b - a;
 };
 
+std::vector<Point> getPointsBetween2(const std::vector<Point>& coords, size_t a, size_t b) {
+    std::vector<Point> outCoords;
+    for (uint64_t i = a; i != b;) {
+        outCoords.push_back(coords[i]);
+
+        if (i < coords.size())
+            ++i;
+        else
+            i = 0;
+    }
+    return outCoords;
+}
+
+std::vector<uint64_t> getPointsBetweenIdx(const std::vector<Point>& coords, size_t a, size_t b) {
+    std::vector<uint64_t> outCoords;
+    for (uint64_t i = a; i != b;) {
+        outCoords.push_back(i);
+
+        if (i < coords.size())
+            ++i;
+        else
+            i = 0;
+    }
+    return outCoords;
+}
+
+float getCornerRadius(const std::vector<Point>& coords, int focus) {
+    int prev = focus - 1;
+    if (prev < 0) prev = coords.size() - 1;
+
+    int next = (focus + 1) % coords.size();
+
+    float angle = GetAngleBetween(coords[focus].v - coords[next].v, coords[focus].v - coords[prev].v);
+
+    float length = Distance(coords[prev].v, coords[focus].v);
+    float radius = (0.5f * length) / cos(angle * 0.5f);
+
+    //showDebugInfo3D(coords[focus], {   
+    //    fmt("%.03f m length", length),
+    //    fmt("%.03f degrees", rad2deg(angle)),
+    //    fmt("%.03f m radius", radius) 
+    //});
+
+    if (angle < deg2rad(0.1f)) return 9999.0f;
+    if (angle > deg2rad(179.0f)) return 9999.0f;
+    if (radius < 1.0f) return 1.0f;
+    if (radius > 9999.0f) return 9999.0f;
+    if (std::isnan(radius)) return 9999.0f;
+    return radius;
+}
+
 Racer::Racer(Vehicle vehicle, const std::string& cfgPath)
     : mVehicle(vehicle)
     , mCfg(RacerConfig::Parse(cfgPath))
@@ -77,6 +128,7 @@ Racer::~Racer() {
                 ENTITY::DELETE_ENTITY(&driver);
             }
             
+            ENTITY::SET_ENTITY_VELOCITY(mVehicle, 0.0f, 0.0f, 0.0f);
             gExt.SetThrottleP(mVehicle, 0.0f);
             gExt.SetBrakeP(mVehicle, 1.0f);
             gExt.SetSteeringAngle(mVehicle, 0.0f);
@@ -486,9 +538,9 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
 
     settingLASteer = map(pitchClp, 0.0f, mCfg.SteerLookAheadPitch, settingLASteer, settingLABrake);
 
-    float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, mCfg.LookaheadThrottleMinDistance, 9999.0f);
-    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, mCfg.LookaheadBrakeMinDistance,          9999.0f);
-    float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, mCfg.LookaheadSteerMinDistance,          9999.0f);
+    float lookAheadThrottle = std::clamp(settingLAThrottle * aiSpeed, mCfg.LookaheadThrottleMinDistance, mCfg.LookaheadThrottleMaxDistance);
+    float lookAheadBrake = std::clamp(settingLABrake * aiSpeed, mCfg.LookaheadBrakeMinDistance, mCfg.LookaheadBrakeMaxDistance);
+    float lookAheadSteer = std::clamp(settingLASteer * aiSpeed, mCfg.LookaheadSteerMinDistance, mCfg.LookaheadSteerMaxDistance);
 
     uint64_t throttleIdx;
     uint64_t brakeIdx;
@@ -539,6 +591,21 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
 
     float throttleBrakeHeading(atan2(nextPositionThrottle.y - nextPositionBrake.y, nextPositionThrottle.x - nextPositionBrake.x));
     float diffNodeHeading = atan2(sin(throttleBrakeHeading - aiHeading), cos(throttleBrakeHeading - aiHeading));
+
+    // for the following situation:
+    // | x |
+    // |    \___
+    //  \       \
+    //    \___    \
+    //         \   \
+    //          |   |
+    //          | I |
+    // I = AI Car , |/\_ = road, x = diffNodeHeading
+    // AI should detect this (since lookahead "skipped ahead" of the chicane).
+    // Prolly by scaling dist(x, AI)(lateral) and braking as needed to bring back the x to
+    // be in the chicane and the rest of the braking stuff taking over again
+    Vector3 bla = (nextPositionThrottle + nextPositionBrake) / 2.0f;
+    float distLatThrottleBrakeHeading = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, bla.x, bla.y, bla.z).x;
 
     float turnThrottle = atan2(sin(nextHeadingThrottle - aiHeading), cos(nextHeadingThrottle - aiHeading));
     float turnSteer = atan2(sin(nextHeadingSteer - aiHeading), cos(nextHeadingSteer - aiHeading));
@@ -598,10 +665,14 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
 
     // Initial brake application
     float maxBrake = 0.0f;
-    // maxBrake = map(aiSpeed, distanceThrottle * mCfg.BrakePointDistanceThrottleMult, distanceBrake * mCfg.BrakePointDistanceBrakeMult, -0.3f, 3.0f);
-    // TODO: Expose 0.5f and 1.5f modifiers. Right more = more aggro/late brakey // 2.0 is also ok?
+    dbgInfo.brakeReason = "None";
+
     // TODO: aiSpeed -> exponential?
-    maxBrake = map(aiSpeed, 0.5f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 2.0f * distanceBrake * mCfg.BrakePointDistanceBrakeMult, 0.0f, 1.0f);
+    maxBrake = map(aiSpeed, distanceBrake * mCfg.BrakePointSpeedMultMin, distanceBrake * mCfg.BrakePointSpeedMultMax, 0.0f, 1.0f);
+    maxBrake = std::clamp(maxBrake, 0.0f, 1.0f);
+    if (maxBrake > 0.01f) {
+        dbgInfo.brakeReason = fmt("dist @ %.0f", distanceBrake);
+    }
 
     float brakeDiffThrottleBrake = 0.0f;
     //showText(0.1f, 0.00f, 0.5f, fmt("aiHeading: %.03f", aiHeading));
@@ -613,20 +684,60 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
         if (brakeDiffThrottleBrake > maxBrake) {
             maxBrake = brakeDiffThrottleBrake;
             //dbgBrakeForHeading = true;
+            dbgInfo.brakeReason = fmt("diffHeading: %.0f deg", rad2deg(diffNodeHeading));
         }
     }
 
-    if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
-        float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
-        if (brakeTurn > maxBrake) {
-            maxBrake = brakeTurn;
-            //dbgBrakeForAngle = true;
+    uint64_t c1i;
+    auto c1 = getTrackCoordNearCoord(coords, aiPosition, c1i);
+
+    uint64_t c2i;
+    auto c2 = getTrackCoordNearCoord(coords, nextPositionThrottle, c2i);
+
+    auto cPieceA = getPointsBetween2(coords, c1i, c2i);
+    auto cPieceB = getPointsBetweenIdx(coords, c1i, c2i);
+
+    float tightestRadius = 1000.0f;
+    uint64_t tightIdx = cPieceB.size();
+
+    for (size_t i = 0; i < cPieceB.size(); ++i) {
+        float radius = getCornerRadius(coords, cPieceB[i]);
+        if ( radius < tightestRadius) {
+            tightestRadius = radius;
+            tightIdx = i;
         }
     }
+
+    if (tightIdx < cPieceB.size()) {
+        dbgInfo.worstCornerRadius = tightestRadius;
+        dbgInfo.worstCornerCoord = cPieceA[tightIdx].v;
+    }
+    //showText(0.4f, 0.15f, 0.5f, fmt("tightest radius = %.2f", tightestRadius));
+
+    if (tightestRadius * mCfg.RadiusActivationMult < aiVelocity.y) {
+        // use if unaccounted pointsbetween throttle la and ai?
+        //showText(0.4f, 0.05f, 0.5f, fmt("distLat = %.2f", distLatThrottleBrakeHeading));
+        float latOffBrake = map(abs(distLatThrottleBrakeHeading), mCfg.LateralOffsetMin, mCfg.LateralOffsetMax, 0.0f, 1.0f);
+        latOffBrake = std::clamp(latOffBrake, 0.0f, 1.0f);
+        float speedMult = std::clamp(map(aiVelocity.y, 0.0f, mCfg.LateralScaleSpeed, 0.0f, 1.0f), 0.0f, 1.0f);
+        latOffBrake *= speedMult;
+        if (latOffBrake > maxBrake) {
+            maxBrake = latOffBrake;
+            dbgInfo.brakeReason = fmt("latOff R(%.0fm)", tightestRadius);
+        }
+        //showText(0.4f, 0.10f, 0.5f, fmt("distLatBrk = %.2f", latOffBrake));
+    }
+
+    //if (abs(turnBrake) > limitRadians && ENTITY::GET_ENTITY_SPEED_VECTOR(mVehicle, true).y > 10.0f) {
+    //    float brakeTurn = map(distPerpBrake, 0.0f, 1.0f, 1.0f, 0.0f);
+    //    if (brakeTurn > maxBrake) {
+    //        maxBrake = brakeTurn;
+    //        dbgInfo.brakeReason = fmt("brkTurn %.2f", maxBrake);
+    //    }
+    //}
 
     // Track limits
     {
-
         Vector3 predictedPos = (nextPositionVelocity + turnWorld) * 0.5f;
         uint64_t idx = coords.size();
         Point trackClosestPred = getTrackCoordNearCoord(coords, predictedPos, idx);
@@ -667,6 +778,7 @@ void Racer::getControls(const std::vector<Vehicle> &opponents, float limitRadian
                         0.0f, 1.0f);
                     if (overshootBrake > maxBrake) {
                         maxBrake = overshootBrake;
+                        dbgInfo.brakeReason = "trackLim overshoot";
                         inputs.throttle = 0.0f;
                         dbgInfo.trackLimits = 2;
                     }
@@ -1076,7 +1188,7 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
 
 
     // oh no, it wants to go backwards somehow
-    if (getPointsBetween(coords, mTrackIdx, returnIndex) > static_cast<size_t>(lookAheadDistance * 1.50f)) {
+    if (getPointsBetween(coords, mTrackIdx, returnIndex) > static_cast<size_t>(lookAheadDistance * 2.50f)) {
         returnIndex = (mTrackIdx + static_cast<size_t>(lookAheadDistance)) % coords.size();
         //showText(0.0f, 0.3f, 0.25f, "Tryna cheat???");
     }
@@ -1087,7 +1199,7 @@ Vector3 Racer::getCoord(const std::vector<Point> &coords,
     //}
 
     // oh no it's too close to going perpendicular
-    if (getPointsBetween(coords, mTrackIdx, returnIndex) < static_cast<size_t>(lookAheadDistance * 0.50f)) {
+    if (getPointsBetween(coords, mTrackIdx, returnIndex) < static_cast<size_t>(lookAheadDistance * 0.75f)) {
         returnIndex = (mTrackIdx + static_cast<size_t>(lookAheadDistance)) % coords.size();
         //showText(0.0f, 0.3f, 0.25f, "2close??");
     }
@@ -1162,6 +1274,10 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
     drawLine(aiPosition, dbgInfo.nextPositionBrake, solidRed);
     drawSphere(dbgInfo.nextPositionBrake, 0.25f, solidRed);
 
+    if (dbgInfo.worstCornerRadius > 0.0f && dbgInfo.worstCornerRadius < 1000.0f) {
+        drawSphere(dbgInfo.worstCornerCoord, 0.50f, { 255, 0, 255, 127 });
+    }
+
     // draw chevron
     Vector3 p = ENTITY::GET_ENTITY_COORDS(mVehicle, true);
     Vector3 min, max;
@@ -1201,29 +1317,28 @@ void Racer::displayDebugInfo(const Racer::InputInfo& inputs, const Racer::DebugI
 
     // Debug text
     if (mDebugText) {
+        auto currLapTime = mLapTimer.Elapsed();
         Vector3 up2 = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(mVehicle, 0.0f, 0.0f, ((max.z - min.z) / 2.0f) + 2.0f);
         showDebugInfo3D(up2, 10.0f, {
-            fmt("%s(P) %s(ESC) %s(ABS)", 
-                inputs.handbrake ? "~r~" : "~m~", 
+            fmt("%s(P) %s(ESC) %s(ABS) | %s(U) %s(O)",
+                inputs.handbrake ? "~r~" : "~m~",
                 dbgInfo.oversteerCompensateThrottle || dbgInfo.oversteerCompensateSteer ? "~o~" : "~m~",
-                dbgInfo.abs ? "~r~" : "~m~"),
-            fmt("%sUnder ~m~| %sOver", 
-                dbgInfo.understeering ? "~r~" : "~m~", 
+                dbgInfo.abs ? "~r~" : "~m~",
+                dbgInfo.understeering ? "~r~" : "~m~",
                 dbgInfo.oversteerAngle > mCfg.OversteerDetectionAngle ? "~r~" : "~m~"),
-            fmt("%sTrack Limits %s", 
-                dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~", dbgInfo.trackLimitsInside ? "In" : "Out"),
-            fmt("%sT: %03d%% ~m~| %sB: %03d%%", 
-                inputs.throttle > 0.5 ? "~g~" : "~m~", 
-                static_cast<int>(inputs.throttle * 100.0f), 
-                inputs.brake > 0.5 ? "~r~" : "~m~", 
+            fmt("%sTrack Limits %s",
+                dbgInfo.trackLimits == 2 ? "~r~" : dbgInfo.trackLimits == 1 ? "~o~" : "~m~",
+                dbgInfo.trackLimitsInside ? "In" : "Out"),
+            fmt("%sT: %03d%% ~m~| %sB: %03d%%",
+                inputs.throttle > 0.5 ? "~g~" : "~m~",
+                static_cast<int>(inputs.throttle * 100.0f),
+                inputs.brake > 0.5 ? "~r~" : "~m~",
                 static_cast<int>(inputs.brake * 100.0f)),
+            fmt("B: %s", dbgInfo.brakeReason.c_str()),
+            fmt("Now: %02d:%02d.%03d", currLapTime / 60000, (currLapTime / 1000) % 60, currLapTime % 1000),
+            fmt("Last: %02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000),
             });
     }
-
-    // TODO: Consider dumping the following somewhere...
-    //auto currentLapTime = mLapTimer.Elapsed();
-    //std::string previousLapTimeFmt = fmt("%02d:%02d.%03d", mLapTime / 60000, (mLapTime / 1000) % 60, mLapTime % 1000);
-    //std::string liveLapTimeFmt = fmt("%02d:%02d.%03d", currentLapTime / 60000, (currentLapTime / 1000) % 60, currentLapTime % 1000);
 }
 
 void Racer::notify(const std::string& msg) {

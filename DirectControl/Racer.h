@@ -153,6 +153,9 @@ public:
         LookAheadSource laSrcBrake;
         LookAheadSource laSrcSteer;
         OvertakeSource overtakeSource;
+        float worstCornerRadius;
+        Vector3 worstCornerCoord;
+        std::string brakeReason;
     };
 
     /**
