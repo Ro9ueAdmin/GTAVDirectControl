@@ -969,7 +969,7 @@ void Racer::updateLapTimers() {
     }
 
     // TODO: Verify if it always successfully passes point zero / no overlap / doesn't jump
-    if (getPointsBetween(points, mTrackIdx, currPointIdx) < 10) {
+    if (getPointsBetween(points, mTrackIdx, currPointIdx) < 16) {
         if (currPointIdx == 0 && mTrackIdx == points.size() - 1)
             finishPassed = true;
         // We've progressed! Great!
