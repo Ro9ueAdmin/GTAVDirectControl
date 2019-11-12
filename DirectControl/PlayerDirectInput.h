@@ -2,10 +2,10 @@
 #include "Racer.h"
 #include "XInputControl.h"
 
-class PlayerRacer : public Racer {
+class PlayerDirectInput : public Racer {
 
 public:
-    PlayerRacer(Vehicle vehicle, int playerNumber);
+    PlayerDirectInput(Vehicle vehicle, int playerNumber);
     void UpdateControl();
 private:
     void getControls(bool &handbrake, float &throttle, float &brake, float &steer);

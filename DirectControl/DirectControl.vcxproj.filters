@@ -37,9 +37,6 @@
     <ClCompile Include="Track.cpp">
       <Filter>Race Control</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerRacer.cpp">
-      <Filter>Agents</Filter>
-    </ClCompile>
     <ClCompile Include="Racer.cpp">
       <Filter>Agents</Filter>
     </ClCompile>
@@ -47,6 +44,9 @@
       <Filter>Agents</Filter>
     </ClCompile>
     <ClCompile Include="RacerConfig.cpp">
+      <Filter>Agents</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerDirectInput.cpp">
       <Filter>Agents</Filter>
     </ClCompile>
   </ItemGroup>
@@ -76,18 +76,6 @@
     <ClInclude Include="Util\StringFormat.h">
       <Filter>Util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h">
-      <Filter>ScriptHookV</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\main.h">
-      <Filter>ScriptHookV</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h">
-      <Filter>ScriptHookV</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h">
-      <Filter>ScriptHookV</Filter>
-    </ClInclude>
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Util\Logger.hpp">
       <Filter>Util</Filter>
@@ -110,9 +98,6 @@
     <ClInclude Include="Blip.h">
       <Filter>Agents</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerRacer.h">
-      <Filter>Agents</Filter>
-    </ClInclude>
     <ClInclude Include="Racer.h">
       <Filter>Agents</Filter>
     </ClInclude>
@@ -120,6 +105,24 @@
       <Filter>Agents</Filter>
     </ClInclude>
     <ClInclude Include="RacerConfig.h">
+      <Filter>Agents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\enums.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\main.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\nativeCaller.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\natives.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\types.h">
+      <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerDirectInput.h">
       <Filter>Agents</Filter>
     </ClInclude>
   </ItemGroup>

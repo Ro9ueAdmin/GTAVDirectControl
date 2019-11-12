@@ -1,4 +1,4 @@
-#include "PlayerRacer.h"
+#include "PlayerDirectInput.h"
 #include <inc/natives.h>
 #include "Util/StringFormat.h"
 #include "Util/MathExt.h"
@@ -6,14 +6,14 @@
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
 
-PlayerRacer::PlayerRacer(Vehicle vehicle, int playerNumber) :
+PlayerDirectInput::PlayerDirectInput(Vehicle vehicle, int playerNumber) :
     Racer(vehicle, ""),
     mXInput(playerNumber) {
-    mBlip.SetName(fmt("Player %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
+    mBlip.SetName(fmt("DC %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)), VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)));
     mBlip.SetColor(BlipColorWhite);
 }
 
-void PlayerRacer::UpdateControl() {
+void PlayerDirectInput::UpdateControl() {
     if (!VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(mVehicle))
         VEHICLE::SET_VEHICLE_ENGINE_ON(mVehicle, true, true, true);
 
@@ -54,7 +54,7 @@ void PlayerRacer::UpdateControl() {
     }
 }
 
-void PlayerRacer::getControllerControls(bool& handbrake, float& throttle, float& brake, float& steer) {
+void PlayerDirectInput::getControllerControls(bool& handbrake, float& throttle, float& brake, float& steer) {
     // Basic input stuff
     handbrake = mXInput.IsButtonPressed(XInputController::RightShoulder);
     throttle = mXInput.GetAnalogValue(XInputController::RightTrigger);
@@ -121,7 +121,7 @@ void PlayerRacer::getControllerControls(bool& handbrake, float& throttle, float&
     }
 }
 
-void PlayerRacer::getKeyboardControls(bool& handbrake, float& throttle, float& brake, float& steer) {
+void PlayerDirectInput::getKeyboardControls(bool& handbrake, float& throttle, float& brake, float& steer) {
     handbrake = GetAsyncKeyState('O') & 0x8000 ? 1.0f : 0.0f;
     throttle = GetAsyncKeyState('I') & 0x8000 ? 1.0f : 0.0f;
     float reverse = GetAsyncKeyState('U') & 0x8000 ? 1.0f : 0.0f;
@@ -134,7 +134,7 @@ void PlayerRacer::getKeyboardControls(bool& handbrake, float& throttle, float& b
     steer = left - right;
 }
 
-void PlayerRacer::getControls(bool& handbrake, float& throttle, float& brake, float& steer) {
+void PlayerDirectInput::getControls(bool& handbrake, float& throttle, float& brake, float& steer) {
     mXInput.Update();
     if (mXInput.IsAvailable()) {
         getControllerControls(handbrake, throttle, brake, steer);
@@ -144,7 +144,7 @@ void PlayerRacer::getControls(bool& handbrake, float& throttle, float& brake, fl
     }
 }
 
-void PlayerRacer::drawDebugLines(float steeringAngle, float nextAngle) {
+void PlayerDirectInput::drawDebugLines(float steeringAngle, float nextAngle) {
     Vector3 velocityWorld = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
     Vector3 positionWorld = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
     Vector3 travelWorld = velocityWorld + positionWorld;

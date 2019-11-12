@@ -1,7 +1,7 @@
 #include "Cheats.h"
 
 #include "script.h"
-#include "PlayerRacer.h"
+#include "PlayerDirectInput.h"
 #include "Settings.h"
 
 #include "Util/MathExt.h"
@@ -79,14 +79,14 @@ Vehicle findClosestVehicle(Vector3 p, float d) {
 
 namespace Cheats {
 void ControlCar(Vehicle vehicle) {
-    if (gPlayerRacer) {
-        showNotification("Stop controlling vehicle " + std::to_string(gPlayerRacer->GetVehicle()));
-        gPlayerRacer.reset(nullptr);
+    if (gPlayerDirectInput) {
+        showNotification("Stop controlling vehicle " + std::to_string(gPlayerDirectInput->GetVehicle()));
+        gPlayerDirectInput.reset(nullptr);
     }
     else {
         if (ENTITY::DOES_ENTITY_EXIST(vehicle)) {
             showNotification("Controlling vehicle " + std::to_string(vehicle));
-            gPlayerRacer = std::make_unique<PlayerRacer>(vehicle, 2);
+            gPlayerDirectInput = std::make_unique<PlayerDirectInput>(vehicle, 2);
         }
         else {
             showNotification("No vehicle to control");
@@ -127,9 +127,9 @@ void EnterPassenger(Ped playerPed) {
 }
 
 void DebugPlayer() {
-    if (gPlayerRacer) {
-        showNotification("Toggling debug for " + std::to_string(gPlayerRacer->GetVehicle()));
-        gPlayerRacer->SetDebugView(!gPlayerRacer->GetDebugView());
+    if (gPlayerDirectInput) {
+        showNotification("Toggling debug for " + std::to_string(gPlayerDirectInput->GetVehicle()));
+        gPlayerDirectInput->SetDebugView(!gPlayerDirectInput->GetDebugView());
     }
 }
 
