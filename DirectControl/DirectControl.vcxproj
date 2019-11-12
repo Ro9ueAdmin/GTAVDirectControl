@@ -169,10 +169,11 @@
     <ClCompile Include="XInputControl.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\enums.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\main.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\natives.h" />
-    <ClInclude Include="..\..\ScriptHookV_SDK\inc\types.h" />
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\enums.h" />
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\main.h" />
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\nativeCaller.h" />
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\natives.h" />
+    <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\types.h" />
     <ClInclude Include="Blip.h" />
     <ClInclude Include="Cheats.h" />
     <ClInclude Include="Memory\NativeMemory.hpp" />
