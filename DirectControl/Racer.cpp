@@ -481,6 +481,9 @@ Vector3 Racer::chooseOvertakePoint(const std::vector<Point> &coords, const std::
     return {};
 }
 
+// For a given track piece, compares the difference between the outermost track sides, e.g.
+// comparing the inner and outer curve radii.
+// Averages out over 8 samples (ahead of the first (two) idx).
 float Racer::avgCenterDiff(const std::vector<Point>& coords, uint64_t idx) {
     float diff = 0.0f;
     Vector3 a = coords[(idx + 0) % coords.size()].v;
@@ -979,7 +982,7 @@ void Racer::updateLapTimers() {
         uint64_t min = (mLapTime / (1000 * 60)) % 60;
         uint64_t sec = (mLapTime / 1000) % 60;
         uint64_t mil = (mLapTime % 1000);
-        notify(fmt("Last lap: %d:%02d.%03d", min, sec, mil));
+        notify(fmt("Last lap: %d:%02d.%03d", min, sec, mil), true);
     }
 }
 
