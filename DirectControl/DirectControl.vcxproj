@@ -112,6 +112,9 @@
     <PreBuildEvent>
       <Command>del $(ProjectDir)$(IntermediateOutputPath)main.obj</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>PostBuild.bat $(ProjectDir)$(OutDir) "D:\Games\Steam\steamapps\common\Grand Theft Auto V" $(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
