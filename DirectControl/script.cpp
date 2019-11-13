@@ -11,18 +11,22 @@
 #include "Util/MathExt.h"
 
 #include "Racer.h"
-#include "PlayerRacer.h"
+#include "PlayerDirectInput.h"
 #include "Settings.h"
 #include "Track.h"
 #include "Cheats.h"
 #include "Session.h"
+#include "Player.h"
+#include "Util/StringFormat.h"
 
 using json = nlohmann::json;
 
 bool gRecording = false;
 
 std::vector<std::unique_ptr<Racer>> gRacers;
-std::unique_ptr<PlayerRacer> gPlayerRacer(nullptr);
+std::unique_ptr<PlayerRacer> gPlayerRacer;
+std::unique_ptr<PlayerDirectInput> gPlayerDirectInput(nullptr);
+Vehicle gPrevVehicle = 0;
 
 template <typename F, typename ... Args>
 void CheckCheat(const std::string& cheat, F func, Args...args) {
@@ -34,8 +38,37 @@ void CheckCheat(const std::string& cheat, F func, Args...args) {
 
 void UpdatePlayer() {
     Ped playerPed = PLAYER::PLAYER_PED_ID();
+    Vehicle vehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 
-    if (gPlayerRacer != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerRacer->GetVehicle(), -1) != playerPed) {
+    if (vehicle != gPrevVehicle &&
+        ENTITY::DOES_ENTITY_EXIST(vehicle) && 
+        playerPed == VEHICLE::GET_PED_IN_VEHICLE_SEAT(vehicle, -1)) {
+        gPlayerRacer.reset();
+        gPlayerRacer = std::make_unique<PlayerRacer>(vehicle);
+        gPlayerRacer->SetTrack(Session::Get().GetTrack());
+
+        std::string name = getGxtName(ENTITY::GET_ENTITY_MODEL(vehicle));
+        std::string plate = VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle);
+        std::string msg = "Changed vehicle!";
+        showNotification(fmt("Player ~b~%s (~r~%s~b~)\n~w~%s",
+            name.c_str(), plate.c_str(), msg.c_str()),
+            nullptr);
+    }
+    else if (vehicle != gPrevVehicle &&
+        !ENTITY::DOES_ENTITY_EXIST(vehicle)) {
+        gPlayerRacer.reset();
+        std::string msg = "Exit vehicle!";
+        showNotification(fmt("Player ~b~\n~w~%s",
+            msg.c_str()),
+            nullptr);
+    }
+    gPrevVehicle = vehicle;
+
+    if (gPlayerDirectInput != nullptr && VEHICLE::GET_PED_IN_VEHICLE_SEAT(gPlayerDirectInput->GetVehicle(), -1) != playerPed) {
+        gPlayerDirectInput->UpdateControl();
+    }
+
+    if (gPlayerRacer) {
         gPlayerRacer->UpdateControl();
     }
 
@@ -100,7 +133,7 @@ void UpdateAI(){
             racer->SetTrack(recordTrack);
         }
         racer->UpdateControl(npcs);
-    }    
+    }
 
     if (gRecording) {
         DrawDebugTrack(recordTrack.Points());
@@ -171,7 +204,7 @@ void ScriptMain() {
 
 void ScriptExit() {
     gRacers.clear();
-    gPlayerRacer.reset();
+    gPlayerDirectInput.reset();
 }
 
 void CheatMain() {

@@ -156,6 +156,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Memory\NativeMemory.cpp" />
     <ClCompile Include="Memory\VehicleExtensions.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="PlayerDirectInput.cpp" />
     <ClCompile Include="Racer.cpp" />
     <ClCompile Include="RacerConfig.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="Memory\Offsets.hpp" />
     <ClInclude Include="Memory\VehicleExtensions.hpp" />
     <ClInclude Include="Memory\Versions.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerDirectInput.h" />
     <ClInclude Include="Racer.h" />
     <ClInclude Include="RacerConfig.h" />

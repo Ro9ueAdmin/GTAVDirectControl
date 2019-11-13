@@ -20,6 +20,7 @@
 #include <filesystem>
 #include "Track.h"
 #include "Session.h"
+#include "Player.h"
 
 using json = nlohmann::json;
 
@@ -27,6 +28,7 @@ extern bool gRecording;
 
 extern std::vector<std::unique_ptr<Racer>> gRacers;
 extern std::unique_ptr<PlayerRacer> gPlayerRacer;
+extern std::unique_ptr<PlayerDirectInput> gPlayerDirectInput;
 
 namespace {
 Vehicle spawnVehicle(Hash hash, Vector3 coords, float heading, DWORD timeout, bool managed) {
@@ -422,6 +424,8 @@ void LoadTrack() {
     for (auto& racer : gRacers) {
         racer->SetTrack(Session::Get().GetTrack());
     }
+    if (gPlayerRacer)
+        gPlayerRacer->SetTrack(Session::Get().GetTrack());
 
     showNotification(fmt("~g~Track loaded\n"
         "Distance: %.2f km", Session::Get().GetTrack().Length()/1000.0f));
@@ -432,6 +436,8 @@ void ReverseTrack() {
     for (auto& racer : gRacers) {
         racer->SetTrack(Session::Get().GetTrack());
     }
+    if (gPlayerRacer)
+        gPlayerRacer->SetTrack(Session::Get().GetTrack());
 }
 
 void DebugTrack() {

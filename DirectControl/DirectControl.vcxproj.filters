@@ -46,6 +46,9 @@
     <ClCompile Include="RacerConfig.cpp">
       <Filter>Agents</Filter>
     </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Agents</Filter>
+    </ClCompile>
     <ClCompile Include="PlayerDirectInput.cpp">
       <Filter>Agents</Filter>
     </ClCompile>
@@ -121,6 +124,9 @@
     </ClInclude>
     <ClInclude Include="..\thirdparty\ScriptHookV_SDK\inc\types.h">
       <Filter>ScriptHookV</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Agents</Filter>
     </ClInclude>
     <ClInclude Include="PlayerDirectInput.h">
       <Filter>Agents</Filter>
