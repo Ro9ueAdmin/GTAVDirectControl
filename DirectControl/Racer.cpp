@@ -10,7 +10,9 @@
 #include "Util/UIUtils.h"
 #include "Memory/VehicleExtensions.hpp"
 //#include "Settings.h"
-
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 const std::vector<Hash> headLightsOnWeathers = {
 //    0x97AA0A79, // EXTRASUNNY
 //    0x36A83D84, // CLEAR
