@@ -20,6 +20,8 @@ public:
     Track();
     explicit Track(std::string name, std::vector<Point> points);
 
+    std::string Name() const;
+
     const std::vector<Point>& Points() const;
 
     float Length() const;

@@ -22,6 +22,10 @@ Track::Track(std::string name, std::vector<Point> points)
     }
 }
 
+std::string Track::Name() const {
+    return mName;
+}
+
 const std::vector<Point>& Track::Points() const {
     return mPoints;
 }
