@@ -91,10 +91,12 @@ float getCornerRadius(const std::vector<Point>& coords, int focus) {
 
 Racer::Racer(Vehicle vehicle, const std::string& cfgPath)
     : mVehicle(vehicle)
+    , mVehName(getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)))
+    , mPlateText(VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle))
     , mCfg(RacerConfig::Parse(cfgPath))
     , mCfgName(cfgPath)
-    , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle)),
-                                             VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle)), BlipColorYellow, true)
+    , mBlip(vehicle, BlipSpriteStandard, fmt("AI %s %s", mVehName.c_str(),
+        mPlateText.c_str()), BlipColorYellow, true)
     , mActive(mCfg.DefaultActive)
     , mDebugView(mCfg.ShowDebug)
     , mDebugText(mCfg.ShowDebugText)
@@ -1352,11 +1354,8 @@ void Racer::notify(const std::string& msg) {
 
 void Racer::notify(const std::string& msg, bool alwaysShow) {
     if (mDebugView || alwaysShow) {
-        std::string name = getGxtName(ENTITY::GET_ENTITY_MODEL(mVehicle));
-        std::string plate = VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(mVehicle);
-
         showNotification(fmt("~b~%s (~r~%s~b~)\n~w~%s", 
-            name.c_str(), plate.c_str(), msg.c_str()), 
+            mVehName.c_str(), mPlateText.c_str(), msg.c_str()), 
             &mNotifyHandle);
     }
 }

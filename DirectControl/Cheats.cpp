@@ -77,6 +77,28 @@ Vehicle findClosestVehicle(Vector3 p, float d) {
     }
     return closestVehicle;
 }
+
+std::unordered_map<Hash, std::string> checkCache(const std::string& cacheFile) {
+    std::unordered_map<Hash, std::string> vehicleHashes;
+    std::ifstream infile(cacheFile);
+    if (infile.is_open()) {
+        Hash hash;
+        std::string name;
+        while (infile >> hash >> name) {
+            vehicleHashes.insert({ hash, name });
+        }
+    }
+    return vehicleHashes;
+}
+
+std::string getVehicleModelName(Hash model) {
+    std::string cacheFile = ".\\AddonSpawner\\hashes.cache";
+    std::unordered_map<Hash, std::string> hashCache = checkCache(cacheFile);
+    if (!hashCache.empty()) {
+        return std::find_if(hashCache.begin(), hashCache.end(), [model](const auto& entry) { return entry.first == model; })->second;
+    }
+    return VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
+}
 }
 
 namespace Cheats {
@@ -160,7 +182,8 @@ void MakeAi(Vehicle vehicle, bool enableAi) {
                 }
             }
             if (!found) {
-                std::string gameName = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(vehicle);
+                Hash model = ENTITY::GET_ENTITY_MODEL(vehicle);
+                std::string gameName = getVehicleModelName(model);
 
                 gRacers.push_back(std::make_unique<Racer>(vehicle, gameName));
 

@@ -295,6 +295,9 @@ public:
     void notify(const std::string& msg, bool alwaysShow);
 
     Vehicle mVehicle;               // The vehicle the racer AI uses.
+    std::string mVehName;
+    std::string mPlateText;
+
     RacerConfig mCfg;               // Driving settings for this agent.
     std::string mCfgName;           // Yoot
 
