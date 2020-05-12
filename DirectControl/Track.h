@@ -1,6 +1,7 @@
 #pragma once
 #include <inc/types.h>
 #include <vector>
+#include <string>
 
 class Point {
 public:
