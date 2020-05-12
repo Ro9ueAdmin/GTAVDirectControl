@@ -28,11 +28,11 @@ void PlayerRacer::SetTrack(const Track& t) {
     mTrack = &t;
     findClosestNode(mTrackIdx);
     if (mTrackIdx == std::numeric_limits<size_t>::max()) {
-        notify("Track unset/removed");
+        //notify("Track unset/removed");
         mActive = false;
     }
     else {
-        notify(fmt("Track set, closest node = %d", mTrackIdx));
+        //notify(fmt("Track set, closest node = %d", mTrackIdx));
     }
 }
 

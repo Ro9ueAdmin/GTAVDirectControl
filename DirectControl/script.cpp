@@ -47,20 +47,10 @@ void UpdatePlayer() {
         gPlayerRacer = std::make_unique<PlayerRacer>(vehicle);
         gPlayerRacer->SetTrack(Session::Get().GetTrack());
 
-        std::string name = getGxtName(ENTITY::GET_ENTITY_MODEL(vehicle));
-        std::string plate = VEHICLE::GET_VEHICLE_NUMBER_PLATE_TEXT(vehicle);
-        std::string msg = "Changed vehicle!";
-        showNotification(fmt("Player ~b~%s (~r~%s~b~)\n~w~%s",
-            name.c_str(), plate.c_str(), msg.c_str()),
-            nullptr);
     }
     else if (vehicle != gPrevVehicle &&
         !ENTITY::DOES_ENTITY_EXIST(vehicle)) {
         gPlayerRacer.reset();
-        std::string msg = "Exit vehicle!";
-        showNotification(fmt("Player ~b~\n~w~%s",
-            msg.c_str()),
-            nullptr);
     }
     gPrevVehicle = vehicle;
 
