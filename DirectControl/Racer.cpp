@@ -1229,16 +1229,16 @@ float Racer::getSteeringAngle() {
 
 float Racer::calculateReduction() {
     float mult = 1;
-    Vector3 vel = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
-    Vector3 pos = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
-    Vector3 motion = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, pos.x + vel.x, pos.y + vel.y,
-                                                                       pos.z + vel.z);
-    if (motion.y > 3) {
-        mult = 0.15f + powf(0.9f, abs(motion.y) - 7.2f);
-        if (mult != 0) { mult = floorf(mult * 1000) / 1000; }
-        if (mult > 1) { mult = 1; }
-    }
-    mult = (1 + (mult - 1) * 1.0f);
+    //Vector3 vel = ENTITY::GET_ENTITY_VELOCITY(mVehicle);
+    //Vector3 pos = ENTITY::GET_ENTITY_COORDS(mVehicle, 1);
+    //Vector3 motion = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(mVehicle, pos.x + vel.x, pos.y + vel.y,
+    //                                                                   pos.z + vel.z);
+    //if (motion.y > 3) {
+    //    mult = 0.15f + powf(0.9f, abs(motion.y) - 7.2f);
+    //    if (mult != 0) { mult = floorf(mult * 1000) / 1000; }
+    //    if (mult > 1) { mult = 1; }
+    //}
+    //mult = (1 + (mult - 1) * 1.0f);
     return mult;
 }
 
